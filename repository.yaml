@@ -1,0 +1,5 @@
+# Repositorio público de complementos de Vizions para Home Assistant.
+# Se agrega una vez en cada casa: Ajustes → Complementos → Tienda → ⋮ → Repositorios.
+name: Vizions
+url: https://github.com/emilioruval/vizions-ha-addons
+maintainer: Vizions Networks

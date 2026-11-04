@@ -1,0 +1,41 @@
+name: Vizions Smart Living
+version: "0.2.4"
+slug: vizions_smart_living
+description: Conecta esta casa con Vizions OS (la TV y el celular del huésped) e instala el Vizions Panel (la tablet del dueño).
+url: https://vizionsnetworks.com
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+startup: application
+boot: auto
+# Vizions Panel: registrar la tarjeta y crear el tablero (necesita la API de HA)
+# y copiar la tarjeta a /homeassistant/www/vizions.
+homeassistant_api: true
+map:
+  - type: homeassistant_config
+    read_only: false
+options:
+  propiedad: ""
+  llave: ""
+  puerta: wss://casas.vizionsnetworks.com/agente
+  ha_url: http://homeassistant:8123
+  ha_token: ""
+  etiqueta: Vizions
+  panel: true
+  dispositivos: []
+schema:
+  propiedad: "match(^[a-z0-9][a-z0-9-]{0,62}$)"
+  llave: password
+  puerta: "match(^wss?://.+$)"
+  ha_url: url
+  ha_token: password
+  etiqueta: "str?"
+  panel: "bool?"
+  dispositivos:
+    - id: "match(^[a-z0-9][a-z0-9-]{0,62}$)"
+      tipo: list(luz)
+      entidad: str
+      nombre_es: str
+      nombre_en: str

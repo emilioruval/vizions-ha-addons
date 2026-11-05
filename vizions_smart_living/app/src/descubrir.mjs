@@ -107,6 +107,18 @@ export function dispositivosEtiquetados({ etiquetas = [], dispositivos = [], ent
 
 // Conexión propia a Home Assistant que vigila el registro y avisa con
 // alCambiar(lista) cada vez que cambia lo que el huésped puede controlar.
+//
+// SMART-LIVING-DESCUBRIR-VIGIA-01: se recupera solo cuando HA se reinicia, igual
+// que el adaptador (ADAPTADOR-RECONEXION-01). Antes, una conexión aceptada a medio
+// reinicio que nunca contestaba, o una consulta sin respuesta, lo dejaban trabado
+// para siempre: ya no se enteraba de las etiquetas hasta reiniciar el complemento.
+//   · la conexión tiene tiempoConexionMs para autenticarse;
+//   · ya conectada, un ping cada intervaloPingMs: sin pong en tiempoPongMs, se corta;
+//   · cada consulta tiene tiempoPeticionMs: sin respuesta cuenta como fallo y la
+//     siguiente revisión vuelve a intentar (ya no se queda esperando para siempre);
+//   · cortar suelta la conexión sin esperar su cierre y reintenta una sola vez
+//     (el cierre tardío de la vieja no abre otra);
+//   · el sondeo solo consulta con la conexión ya autenticada.
 export function crearDescubridor({
   urlBase,
   token,
@@ -117,11 +129,16 @@ export function crearDescubridor({
   esperaMs = 1500,
   intervaloMs = 60000,
   reconexionMs = [1000, 2000, 5000, 10000, 30000],
+  tiempoConexionMs = 15000,
+  tiempoPeticionMs = 15000,
+  intervaloPingMs = 30000,
+  tiempoPongMs = 10000,
   registrar = () => {},
 } = {}) {
   const url = new URL(urlBase);
   const urlWs = `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}/api/websocket`;
   let ws = null;
+  let listo = false; // conexión autenticada
   let cerrado = false;
   let intentos = 0;
   let siguiente = 1;
@@ -132,13 +149,69 @@ export function crearDescubridor({
   let tReconexion = null;
   let enCurso = false;
   let otraVez = false;
+  const vigia = { conexion: null, ping: null, pong: null };
+
+  function soltarVigia() {
+    clearTimeout(vigia.conexion);
+    clearInterval(vigia.ping);
+    clearTimeout(vigia.pong);
+    vigia.conexion = vigia.ping = vigia.pong = null;
+  }
+
+  function rechazarPendientes() {
+    for (const p of pendientes.values()) {
+      clearTimeout(p.t);
+      p.mal(new Error('sin conexión'));
+    }
+    pendientes.clear();
+  }
+
+  function programarReconexion() {
+    if (cerrado) return;
+    clearTimeout(tReconexion);
+    const espera = reconexionMs[Math.min(intentos, reconexionMs.length - 1)];
+    intentos += 1;
+    tReconexion = setTimeout(conectar, espera);
+  }
+
+  // Suelta la conexión s (si sigue siendo la actual) y programa un solo reintento.
+  function soltar(s) {
+    if (ws !== s) return;
+    ws = null;
+    listo = false;
+    soltarVigia();
+    rechazarPendientes();
+    programarReconexion();
+  }
+
+  // Corta una conexión que no responde (o que HA rechazó): no espera a que se cierre.
+  function cortar(s, motivo) {
+    if (ws !== s) return;
+    if (motivo) registrar({ evento: 'descubrimiento-aviso', motivo });
+    soltar(s);
+    try {
+      s.close();
+    } catch {
+      /* ya estaba cerrándose */
+    }
+  }
 
   const pedir = (tipo, extra = {}) =>
     new Promise((ok, mal) => {
-      if (!ws || ws.readyState !== 1) return mal(new Error('sin conexión'));
+      const s = ws;
+      if (!s || !listo || s.readyState !== 1) return mal(new Error('sin conexión'));
       const id = siguiente++;
-      pendientes.set(id, { ok, mal });
-      ws.send(JSON.stringify({ id, type: tipo, ...extra }));
+      const t = setTimeout(() => {
+        if (!pendientes.has(id)) return;
+        pendientes.delete(id);
+        mal(new Error('sin respuesta'));
+      }, tiempoPeticionMs);
+      pendientes.set(id, { ok, mal, t });
+      try {
+        s.send(JSON.stringify({ id, type: tipo, ...extra }));
+      } catch {
+        /* el temporizador lo resuelve */
+      }
     });
 
   async function refrescar() {
@@ -179,10 +252,22 @@ export function crearDescubridor({
   }
 
   function conectar() {
-    if (cerrado) return;
-    const s = new WebSocketImpl(urlWs);
+    if (cerrado || ws) return;
+    let s;
+    try {
+      s = new WebSocketImpl(urlWs);
+    } catch {
+      programarReconexion();
+      return;
+    }
     ws = s;
+    listo = false;
+    soltarVigia();
+    vigia.conexion = setTimeout(() => {
+      if (ws === s && !listo) cortar(s, 'SIN_RESPUESTA');
+    }, tiempoConexionMs);
     s.onmessage = (m) => {
+      if (ws !== s) return;
       let d;
       try {
         d = JSON.parse(typeof m.data === 'string' ? m.data : String(m.data));
@@ -192,31 +277,42 @@ export function crearDescubridor({
       if (d.type === 'auth_required') return s.send(JSON.stringify({ type: 'auth', access_token: token }));
       if (d.type === 'auth_invalid') {
         registrar({ evento: 'descubrimiento-fallo', error: 'Home Assistant rechazó el token' });
-        return s.close();
+        return cortar(s, null);
       }
       if (d.type === 'auth_ok') {
         intentos = 0;
+        listo = true;
+        clearTimeout(vigia.conexion);
+        vigia.conexion = null;
+        clearInterval(vigia.ping);
+        vigia.ping = setInterval(() => {
+          if (ws !== s || vigia.pong) return;
+          try {
+            s.send(JSON.stringify({ id: siguiente++, type: 'ping' }));
+          } catch {
+            /* el temporizador lo resuelve */
+          }
+          vigia.pong = setTimeout(() => cortar(s, 'SIN_PONG'), tiempoPongMs);
+        }, intervaloPingMs);
         for (const ev of EVENTOS) pedir('subscribe_events', { event_type: ev }).catch(() => {});
         refrescar();
+        return;
+      }
+      if (d.type === 'pong') {
+        clearTimeout(vigia.pong);
+        vigia.pong = null;
         return;
       }
       if (d.type === 'event') return programar();
       if (d.type === 'result' && pendientes.has(d.id)) {
         const p = pendientes.get(d.id);
         pendientes.delete(d.id);
+        clearTimeout(p.t);
         if (d.success) p.ok(d.result);
         else p.mal(new Error((d.error && d.error.code) || 'error'));
       }
     };
-    s.onclose = () => {
-      if (ws === s) ws = null;
-      for (const p of pendientes.values()) p.mal(new Error('sin conexión'));
-      pendientes.clear();
-      if (cerrado) return;
-      const espera = reconexionMs[Math.min(intentos, reconexionMs.length - 1)];
-      intentos += 1;
-      tReconexion = setTimeout(conectar, espera);
-    };
+    s.onclose = () => soltar(s);
     s.onerror = () => {};
   }
 
@@ -224,7 +320,7 @@ export function crearDescubridor({
     iniciar() {
       conectar();
       tSondeo = setInterval(() => {
-        if (ws && ws.readyState === 1) refrescar();
+        if (ws && listo && ws.readyState === 1) refrescar();
       }, intervaloMs);
     },
     cerrar() {
@@ -232,7 +328,18 @@ export function crearDescubridor({
       clearTimeout(tRefresco);
       clearTimeout(tReconexion);
       clearInterval(tSondeo);
-      if (ws) ws.close();
+      soltarVigia();
+      const s = ws;
+      ws = null;
+      listo = false;
+      rechazarPendientes();
+      if (s && typeof s.close === 'function') {
+        try {
+          s.close();
+        } catch {
+          /* ya cerrada */
+        }
+      }
     },
   };
 }

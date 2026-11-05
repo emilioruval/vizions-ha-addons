@@ -1,6 +1,6 @@
-// Vizions Panel 0.4.3 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.4.4 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 055ff2bae096036e46b0fe9ddc65328d
+// Huella del contenido: 69778c011f1a95781ec69e09be7f11e9
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -742,6 +742,8 @@ const __vp_tarjeta = (() => {
 // el texto se recorre para no quedar debajo de esas barras.
 // 0.4.3: en kiosko, «Atrás» (el gesto de la orilla en Android, el botón del navegador)
 // ya no saca del panel a otras páginas de HA: se queda donde está.
+// 0.4.4: el número grande de las ventanas (brillo, volumen, posición) tenía el mismo
+// nombre de estilo que la vista grande de la cámara y se dibujaba como caja de 16:9.
 //
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
@@ -749,7 +751,7 @@ const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.4.3';
+const VERSION_PANEL = '0.4.4';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
@@ -1283,7 +1285,7 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .cerrar svg,.redondo svg,.opc svg,.play svg{stroke:currentColor}
 .bloque{display:flex;flex-direction:column;gap:12px}
 .fila-et{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.grande{font-size:56px;font-weight:300;letter-spacing:-0.04em;line-height:1}
+.cifra{font-size:56px;font-weight:300;letter-spacing:-0.04em;line-height:1}
 .desl{position:relative;height:64px;border-radius:20px;overflow:hidden;background:rgba(255,255,255,0.14)}
 .desl i{position:absolute;top:0;left:0;bottom:0;border-radius:20px;background:var(--vp-tinte)}
 .desl input{position:absolute;top:0;left:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
@@ -1379,7 +1381,7 @@ function htmlVentana(d, estados, idioma, vista, lugar) {
     const prendida = e.state === 'on';
     if (c.brillo) {
       const b = valorDe('brillo', prendida && num(f.pct) !== null ? f.pct : 0);
-      cuerpo += bloque(T.brillo, desl('brillo', b || 1, 1, 100, T.brillo), `<span class="grande">${esc(prendida || arr ? `${b} %` : T.apagada)}</span>`);
+      cuerpo += bloque(T.brillo, desl('brillo', b || 1, 1, 100, T.brillo), `<span class="cifra">${esc(prendida || arr ? `${b} %` : T.apagada)}</span>`);
     }
     if (c.tono) {
       const k = prendida && a.color_mode === 'color_temp' ? num(a.color_temp_kelvin) : null;
@@ -1410,7 +1412,7 @@ function htmlVentana(d, estados, idioma, vista, lugar) {
     if (c.volumen) {
       const v = valorDe('volumen', num(est.volumen) ?? 0);
       const silencio = c.silencio ? opc('silencio', '', svg(est.silencio ? ICONOS.silencio : ICONOS.sonido, 22), { sel: est.silencio === true, etiqueta: est.silencio ? T.quitarSilencio : T.silenciar, clase: 'cerrar vidrio' }) : '';
-      cuerpo += bloque(T.volumen, desl('volumen', v, 0, 100, T.volumen), `<span style="display:flex;align-items:center;gap:12px"><span class="grande" style="font-size:40px">${esc(`${v} %`)}</span>${silencio}</span>`);
+      cuerpo += bloque(T.volumen, desl('volumen', v, 0, 100, T.volumen), `<span style="display:flex;align-items:center;gap:12px"><span class="cifra" style="font-size:40px">${esc(`${v} %`)}</span>${silencio}</span>`);
     }
     pie = `<div class="pie-hoja">${listo}</div>`;
   } else if (d.tipo === 'cortina') {
@@ -1418,7 +1420,7 @@ function htmlVentana(d, estados, idioma, vista, lugar) {
     if (botones.length) cuerpo += `<div class="seg">${botones.map(([k, et, ic]) => opc(k, '', `${svg(ic, 26)}<span>${esc(et)}</span>`, { estilo: 'min-height:84px;flex-direction:column;gap:6px' })).join('')}</div>`;
     if (c.posicion) {
       const p = valorDe('posicion', num(a.current_position) ?? 0);
-      cuerpo += bloque(T.posicion, desl('posicion', p, 0, 100, T.posicion), `<span class="grande" style="font-size:40px">${esc(`${p} %`)}</span>`);
+      cuerpo += bloque(T.posicion, desl('posicion', p, 0, 100, T.posicion), `<span class="cifra" style="font-size:40px">${esc(`${p} %`)}</span>`);
     }
     pie = `<div class="pie-hoja">${listo}</div>`;
   }

@@ -1,6 +1,6 @@
-// Vizions Panel 0.4.4 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.4.5 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 6be060457998e826754a77cfcb3c3da3
+// Huella del contenido: 6bd0807f32ebee1e95c605511f797acd
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -858,7 +858,7 @@ const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.4.4';
+const VERSION_PANEL = '0.4.5';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
@@ -1016,6 +1016,19 @@ const grados = (v) => {
 };
 // Solo rutas propias de HA (/local/…, /api/image/serve/…) o http(s), sin comillas ni paréntesis.
 const urlSegura = (u) => (typeof u === 'string' && /^(\/(?!\/)|https?:\/\/)[^"'()\\\s<>]*$/.test(u) ? u : null);
+
+// PANEL-05: al subir la imagen de un área, Home Assistant anota en el área la
+// MINIATURA (/api/image/serve/<id>/512x512, 512 px de ancho); estirada a pantalla
+// completa se pixelea. Para una imagen subida a HA se pide la original y, debajo,
+// la miniatura, que se ve si la original no carga. Cualquier otra dirección
+// (/local/…, https://…) queda igual.
+const MINIATURA_HA = /^\/api\/image\/serve\/([A-Za-z0-9_-]+)\/\d+x\d+(?:-[^/]*)?$/;
+function capasFoto(u) {
+  const s = urlSegura(u);
+  if (!s) return [];
+  const m = MINIATURA_HA.exec(s);
+  return m ? [`/api/image/serve/${m[1]}/original`, s] : [s];
+}
 
 // ------------------------------------------------------------------ cámaras
 
@@ -1575,8 +1588,8 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     .join('');
   const espera = vista.espera || new Set();
   const opc = (f) => ({ espera: espera.has(f.entidad), activada: vista.activada === f.entidad, idioma });
-  const foto = urlSegura(cuartoSel ? cuartoSel.foto || fondo : fondo);
-  const estiloFondo = foto ? ` style="background-image:url(&quot;${esc(foto)}&quot;)"` : '';
+  const capas = capasFoto(cuartoSel ? cuartoSel.foto || fondo : fondo);
+  const estiloFondo = capas.length ? ` style="background-image:${capas.map((u) => `url(&quot;${esc(u)}&quot;)`).join(', ')}"` : '';
   let centro;
   let abajo = '';
   if (enCamaras) {
@@ -2121,6 +2134,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, camarasEtiquetadas, urlCamara, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, dibujar, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, dibujar, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

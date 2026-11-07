@@ -1,6 +1,6 @@
-// Vizions Panel 0.4.5 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.5.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 6bd0807f32ebee1e95c605511f797acd
+// Huella del contenido: adcf354fa8b4f586cd7b622904b7ab8f
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -852,13 +852,27 @@ const __vp_tarjeta = (() => {
 // 0.4.4: el número grande de las ventanas (brillo, volumen, posición) tenía el mismo
 // nombre de estilo que la vista grande de la cámara y se dibujaba como caja de 16:9.
 //
+// VIZIONS-PANEL-06 (0.5.0, mockups aprobados el 6 nov 2026):
+//  · Bocinas: ya no son fichas en la fila del cuarto ni en Accesos rápidos. Las
+//    maneja un chip de audio (en Casa, todas las de la casa; en un cuarto, las de
+//    ese cuarto) que abre un panel lateral sólido con una tarjeta por bocina:
+//    anterior/reproducir/siguiente, silencio y volumen. Mantener presionada la
+//    tarjeta abre la ventana de música de siempre.
+//  · Cámaras sin foto (una cámara genérica solo con video, como las de un grabador
+//    Hikvision): Home Assistant contesta 500 a la foto y al MJPEG. Si la foto de una
+//    cámara falla, el panel la marca «sin foto» 10 min y usa el reproductor de video
+//    del propio Home Assistant (ha-camera-stream: WebRTC o HLS, lo que tenga), igual
+//    que su ventana de cámara. En la cuadrícula, video en vivo para las primeras 4
+//    cámaras sin foto; las demás dicen «Toca para ver en vivo». Sin foto y sin video:
+//    «Sin imagen». Las cámaras con foto siguen igual.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.4.5';
+const VERSION_PANEL = '0.5.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
@@ -866,6 +880,10 @@ const OTROS = '__otros__';
 const ORDEN_TIPOS = ['luz', 'cortina', 'clima', 'bocina', 'escena'];
 const CASA = '__casa__';
 const CAMARAS = '__camaras__';
+// PANEL-06: cuántas cámaras sin foto se ven en vivo a la vez en la cuadrícula, y cuánto dura la marca «sin foto».
+const MAX_VIVO = 4;
+const SIN_FOTO_MS = 10 * 60 * 1000;
+const CAM_STREAM = 2; // CameraEntityFeature.STREAM
 
 // ------------------------------------------------------------------ kiosko
 
@@ -948,6 +966,8 @@ const TXT = {
     vels: { auto: 'Auto', low: 'Baja', medium: 'Media', middle: 'Media', high: 'Alta', silent: 'Silencio', quiet: 'Silencio', turbo: 'Turbo', on: 'Encendido', off: 'Apagado', diffuse: 'Difuso', focus: 'Directo' },
     volumen: 'Volumen', silenciar: 'Silenciar', quitarSilencio: 'Quitar silencio', anterior: 'Anterior', siguiente: 'Siguiente', reproducirPausar: 'Reproducir o pausar',
     subir: 'Subir', detener: 'Detener', bajar: 'Bajar', posicion: 'Posición',
+    bocinas: (n) => `${n} bocinas`, reproduciendoN: (n) => `${n} reproduciendo`, enPausa: 'en pausa', sinMusicaMin: 'sin música', sinConexionMin: 'sin conexión',
+    audioCasa: 'Audio de la casa', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Abrir el audio', sinImagen: 'Sin imagen', tocaVivo: 'Toca para ver en vivo',
     clima: { 'clear-night': 'DESPEJADO', cloudy: 'NUBLADO', exceptional: 'EXCEPCIONAL', fog: 'NIEBLA', hail: 'GRANIZO', lightning: 'TORMENTA', 'lightning-rainy': 'TORMENTA', partlycloudy: 'PARCIALMENTE NUBLADO', pouring: 'AGUACERO', rainy: 'LLUVIA', snowy: 'NIEVE', 'snowy-rainy': 'AGUANIEVE', sunny: 'SOLEADO', windy: 'VIENTO', 'windy-variant': 'VIENTO' },
   },
   en: {
@@ -977,6 +997,8 @@ const TXT = {
     vels: { auto: 'Auto', low: 'Low', medium: 'Medium', middle: 'Medium', high: 'High', silent: 'Quiet', quiet: 'Quiet', turbo: 'Turbo', on: 'On', off: 'Off', diffuse: 'Diffuse', focus: 'Focus' },
     volumen: 'Volume', silenciar: 'Mute', quitarSilencio: 'Unmute', anterior: 'Previous', siguiente: 'Next', reproducirPausar: 'Play or pause',
     subir: 'Up', detener: 'Stop', bajar: 'Down', posicion: 'Position',
+    bocinas: (n) => `${n} speakers`, reproduciendoN: (n) => `${n} playing`, enPausa: 'paused', sinMusicaMin: 'no music', sinConexionMin: 'offline',
+    audioCasa: 'Home audio', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Open audio', sinImagen: 'No image', tocaVivo: 'Tap to watch live',
     clima: { 'clear-night': 'CLEAR', cloudy: 'CLOUDY', exceptional: 'EXCEPTIONAL', fog: 'FOG', hail: 'HAIL', lightning: 'STORM', 'lightning-rainy': 'STORM', partlycloudy: 'PARTLY CLOUDY', pouring: 'POURING', rainy: 'RAIN', snowy: 'SNOW', 'snowy-rainy': 'SLEET', sunny: 'SUNNY', windy: 'WINDY', 'windy-variant': 'WINDY' },
   },
 };
@@ -999,6 +1021,7 @@ const ICONOS = {
   silencio: 'M11 5 6 9H2v6h4l5 4V5Z M22 9l-6 6 M16 9l6 6', sonido: 'M11 5 6 9H2v6h4l5 4V5Z M15.5 8.5a5 5 0 0 1 0 7 M19 5a10 10 0 0 1 0 14',
   arriba: 'M6 15l6-6 6 6', alto: 'M7 7h10v10H7z', abajo: 'M6 9l6 6 6-6',
   camara: 'M16 13l5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5 M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
+  ecualizador: 'M6 19v-6 M12 19V5 M18 19v-9', derecha: 'M9 6l6 6-6 6',
   rejilla: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z', completa: 'M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
@@ -1073,6 +1096,8 @@ function urlCamara(estado, vivo = false, tic = 0) {
   return vivo ? `/api/camera_proxy_stream/${id}?token=${tok}` : `/api/camera_proxy/${id}?token=${tok}&t=${Math.floor(Number(tic) || 0)}`;
 }
 const camaraEnLinea = (estado) => !!estado && !['unavailable', 'unknown'].includes(estado.state) && urlCamara(estado) !== null;
+// PANEL-06: ¿la cámara da video (stream)? Es lo que permite verla sin foto.
+const camaraConVideo = (estado) => (Number(estado?.attributes?.supported_features) & CAM_STREAM) === CAM_STREAM;
 
 // ------------------------------------------------------------------ modelo (sin DOM: se prueba en Node)
 
@@ -1109,15 +1134,24 @@ function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas 
   for (const ds of porArea.values()) ds.sort((x, y) => ordenTipo(x) - ordenTipo(y) || nombreDe(x).localeCompare(nombreDe(y), loc));
   for (const d of deInicio) if (d.tipo === 'escena' && !escenas.some((x) => x.entidad === d.entidad)) escenas.push(d);
   escenas.sort((x, y) => nombreDe(x).localeCompare(nombreDe(y), loc));
-  const accesos = deInicio.filter((d) => d.tipo !== 'escena').sort((x, y) => ordenTipo(x) - ordenTipo(y) || nombreDe(x).localeCompare(nombreDe(y), loc));
+  const porNombre = (x, y) => nombreDe(x).localeCompare(nombreDe(y), loc);
+  // PANEL-06: las bocinas no van en Accesos rápidos ni en la fila del cuarto: las maneja el chip de audio.
+  const accesos = deInicio.filter((d) => d.tipo !== 'escena' && d.tipo !== 'bocina').sort((x, y) => ordenTipo(x) - ordenTipo(y) || porNombre(x, y));
+  const cuarto = (id, nombre, foto) => {
+    const ds = porArea.get(id);
+    return { id, nombre, foto, dispositivos: ds.filter((d) => d.tipo !== 'bocina'), bocinas: ds.filter((d) => d.tipo === 'bocina').sort(porNombre) };
+  };
   const cuartos = areas
     .filter((a) => porArea.has(a.area_id))
-    .map((a) => ({ id: a.area_id, nombre: idioma === 'en' ? traducirNombre(a.name) || a.name : a.name, foto: urlSegura(a.picture), dispositivos: porArea.get(a.area_id) }))
+    .map((a) => cuarto(a.area_id, idioma === 'en' ? traducirNombre(a.name) || a.name : a.name, urlSegura(a.picture)))
     .sort((x, y) => x.nombre.localeCompare(y.nombre, loc));
-  if (porArea.has(OTROS)) cuartos.push({ id: OTROS, nombre: TXT[idioma].otros, foto: null, dispositivos: porArea.get(OTROS) });
+  if (porArea.has(OTROS)) cuartos.push(cuarto(OTROS, TXT[idioma].otros, null));
+  // Todas las bocinas de la casa (las del panel y las de inicio), una vez cada una.
+  const vistas = new Set();
+  const bocinas = [...lista, ...deInicio].filter((d) => d.tipo === 'bocina' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
   const camaras = camarasEtiquetadas({ etiquetas, dispositivos, entidades, areas, estados }, etiqueta, idioma);
   const total = new Set([...lista, ...deInicio].map((d) => d.entidad)).size + camaras.length;
-  return { cuartos, escenas, accesos, camaras, total };
+  return { cuartos, escenas, accesos, bocinas, camaras, total };
 }
 
 // Qué hace un toque sobre la ficha (o null si el aparato no lo permite).
@@ -1445,6 +1479,44 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .cab-cams{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .btn-cam{height:48px;padding:0 20px;border-radius:24px;color:#FFFFFF;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px}
 .btn-cam svg{stroke:currentColor}
+.camara .nada{top:40%;max-width:86%;text-align:center;line-height:1.3}
+.vivo{position:absolute;top:0;left:0;right:0;bottom:0;background:#000;pointer-events:none}
+.grande .vivo{pointer-events:auto}
+.vivo ha-camera-stream{display:block;width:100%;height:100%;--video-max-height:100%}
+.chip.audio{cursor:pointer;color:#FFFFFF;background:rgba(31,90,74,0.88);border:1px solid rgba(93,202,165,0.85);-webkit-user-select:none;user-select:none}
+.chip.audio.quieto{background:rgba(31,90,74,0.5);border-color:rgba(93,202,165,0.45)}
+.chip.audio svg{stroke:#9FE1CB}
+.chip.audio .et{color:rgba(225,245,238,0.9)}
+.fondo-audio{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(5,9,11,0.55)}
+.lateral{position:absolute;top:calc(12px + var(--vp-arriba,0px));right:12px;bottom:calc(12px + var(--vp-abajo,0px));width:min(420px,calc(100% - 24px));padding:20px;border-radius:26px;background:#11181C;border:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;gap:16px;color:#FFFFFF}
+.lateral:focus{outline:none}
+.cab-lat{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}
+.cab-lat .cerrar{background:#1D262B;border:0}
+.lista-audio{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:12px;scrollbar-width:none}
+.lista-audio::-webkit-scrollbar{display:none}
+.boc{flex:none;border-radius:20px;padding:16px;background:#16392F;border:1px solid #2F8A6F;display:flex;flex-direction:column;gap:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.boc.quieta{background:#162126;border-color:#2A3A3F}
+.boc.nodisp{background:#15191C;border-color:#262C30}
+.boc-cab{display:flex;align-items:center;gap:12px;min-width:0}
+.boc-ic{width:44px;height:44px;border-radius:22px;background:#205A49;color:#9FE1CB;display:flex;align-items:center;justify-content:center;flex:none}
+.quieta .boc-ic{background:#1F2F33}
+.nodisp .boc-ic{background:#22282C;color:#7D8593}
+.boc-ic svg,.boc-btn svg{stroke:currentColor}
+.boc-tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.boc-nom{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boc-sub{font-size:14px;color:#9FE1CB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quieta .boc-sub{color:#8FA3A7}
+.nodisp .boc-sub{color:#8A929E}
+.boc-ctl{display:flex;align-items:center;gap:8px}
+.boc-btn{width:44px;height:44px;border-radius:22px;border:0;background:transparent;color:#D4E8E1;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;flex:none}
+.boc-btn.play{width:52px;height:52px;border-radius:26px;background:#FFFFFF;color:#111315}
+.boc-btn[disabled]{opacity:0.3;cursor:default}
+.boc-vol{display:flex;align-items:center;gap:10px}
+.boc-vol .desl{flex:1;height:36px;border-radius:12px}
+.boc-vol .desl i{border-radius:12px;background:#5DCAA5}
+.boc-vol .desl input[disabled]{cursor:default}
+.boc-num{font-size:15px;color:#9FE1CB;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+.nodisp .boc-ctl,.nodisp .boc-vol{opacity:0.45}
 @media (max-width: 960px){.tabs{order:4;flex-basis:100%;margin:0}}
 @media (orientation: portrait){.fila.escenas .escena{min-width:0}.fila{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}.ficha{width:auto;height:140px}.puntos{display:none}}
 `;
@@ -1552,6 +1624,67 @@ function htmlChip(icono, et, va) {
   return `<div class="chip vidrio">${svg(icono, 18)}<span class="et">${esc(et)}</span><span class="va">${esc(va)}</span></div>`;
 }
 
+// ------------------------------------------------------------------ PANEL-06: audio (chip + panel lateral)
+
+const textoCorto = (v, max = 40) => {
+  if (typeof v !== 'string') return '';
+  const t = v.replace(/\s+/g, ' ').trim();
+  const c = Array.from(t);
+  return c.length > max ? `${c.slice(0, max - 1).join('').trimEnd()}…` : t;
+};
+
+// Lo que dice el chip de audio para un grupo de bocinas (las de la casa o las de un cuarto).
+function resumenAudio(bocinas, estados, idioma = 'es') {
+  const T = TXT[idioma];
+  const fichas = bocinas.map((d) => fichaDe(d, estados, idioma));
+  const sonando = fichas.filter((f) => f.disponible && f.on).length;
+  if (fichas.length === 1) {
+    const f = fichas[0];
+    return { nombre: f.nombre, estado: f.disponible ? (f.on ? T.sonando : f.estado?.estado === 'pausa' ? T.pausa : T.sinMusica) : T.noDisp, sonando };
+  }
+  const pausa = fichas.some((f) => f.disponible && f.estado?.estado === 'pausa');
+  const algunaViva = fichas.some((f) => f.disponible);
+  return { nombre: T.bocinas(fichas.length), estado: sonando ? T.reproduciendoN(sonando) : pausa ? T.enPausa : algunaViva ? T.sinMusicaMin : T.sinConexionMin, sonando };
+}
+
+function htmlChipAudio(grupo, bocinas, estados, idioma, abierta) {
+  const T = TXT[idioma];
+  const r = resumenAudio(bocinas, estados, idioma);
+  return `<button class="chip vidrio audio${r.sonando ? '' : ' quieto'}" data-audio="${esc(grupo)}" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${T.abrirAudio}: ${r.nombre} · ${r.estado}`)}">${svg(ICONOS.ecualizador, 18)}<span class="va">${esc(r.nombre)}</span><span class="et">${esc(r.estado)}</span>${svg(ICONOS.derecha, 16)}</button>`;
+}
+
+// Una tarjeta de bocina del panel lateral. `vista.arrastre` = el volumen que el dedo está moviendo.
+function htmlBocina(d, estados, idioma, vista) {
+  const T = TXT[idioma];
+  const f = fichaDe(d, estados, idioma);
+  const c = f.disponible ? controlesDe(d, estados) : null;
+  const e = estados[d.entidad];
+  const a = e?.attributes || {};
+  const fuente = f.disponible ? textoCorto(a.source || a.app_name || '') : '';
+  const sub = [fuente, f.disponible ? f.sub : T.sinConexion].filter(Boolean).join(' · ');
+  const clases = ['boc'];
+  if (!f.disponible) clases.push('nodisp');
+  else if (!f.on) clases.push('quieta');
+  const ent = esc(d.entidad);
+  const boton = (control, icono, etiqueta, puede, extra = '', tam = 22) =>
+    `<button class="boc-btn${extra}" data-control="${control}" data-valor="" data-entidad="${ent}" aria-label="${esc(etiqueta)}"${puede ? '' : ' disabled'}>${svg(icono, tam)}</button>`;
+  const ctl = `<div class="boc-ctl">${boton('anterior', ICONOS.anterior, T.anterior, !!c?.anterior)}${boton('play', f.on ? ICONOS.pausa : ICONOS.play, T.reproducirPausar, !!c?.play, ' play', 24)}${boton('siguiente', ICONOS.siguiente, T.siguiente, !!c?.siguiente)}</div>`;
+  const arr = vista.arrastre && vista.arrastre.entidad === d.entidad && vista.arrastre.control === 'volumen' ? vista.arrastre : null;
+  const real = num(f.estado?.volumen);
+  const v = arr ? Math.max(0, Math.min(100, Math.round(arr.valor))) : real ?? 0;
+  const silencio = f.estado?.silencio === true;
+  const mute = boton('silencio', silencio ? ICONOS.silencio : ICONOS.sonido, silencio ? T.quitarSilencio : T.silenciar, !!c?.silencio);
+  const desl = `<div class="desl"><i style="width:${c?.volumen ? v : 0}%"></i><input type="range" min="0" max="100" step="1" value="${c?.volumen ? v : 0}" data-control="volumen" data-entidad="${ent}" aria-label="${esc(T.volumen)}"${c?.volumen ? '' : ' disabled'}></div>`;
+  const numTxt = c?.volumen && (arr || real !== null) ? `${silencio && !arr ? 0 : v}` : '–';
+  const vol = `<div class="boc-vol">${mute}${desl}<span class="boc-num">${esc(numTxt)}</span></div>`;
+  return `<div class="${clases.join(' ')}" data-bocina="${ent}"><div class="boc-cab"><span class="boc-ic">${svg(ICONOS.bocina, 22)}</span><span class="boc-tx"><span class="boc-nom">${esc(f.nombre)}</span><span class="boc-sub">${esc(sub)}</span></span></div>${ctl}${vol}</div>`;
+}
+
+function htmlLateralAudio(titulo, bocinas, estados, idioma, vista) {
+  const T = TXT[idioma];
+  return `<div class="fondo-audio" data-cerrar-audio="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="1"><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-audio="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div><div class="lista-audio">${bocinas.map((d) => htmlBocina(d, estados, idioma, vista)).join('')}</div></div>`;
+}
+
 const FMT_FECHA = new Map();
 function partesHora(fecha, idioma, zona) {
   const clave = `${idioma}|${zona}`;
@@ -1597,23 +1730,53 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const fuera = camaras.length - enLinea.length;
     const sobre = [T.enLinea(enLinea.length), fuera ? T.sinConexionN(fuera) : ''].filter(Boolean).join(' · ');
     const sel = camaras.find((c) => c.entidad === vista.camara);
+    // PANEL-06: una cámara «sin foto» (su foto falló) se ve con el reproductor de video de Home Assistant.
+    const sinFoto = vista.sinFoto || new Set();
+    const nada = (texto, tam) => `<span class="nada">${svg(ICONOS.camara, tam)}<span>${esc(texto)}</span></span>`;
+    const chipVivo = `<span class="chipcam"><i></i><span>${esc(T.enVivo)}</span></span>`;
     let cuerpo;
     let boton = '';
     if (sel) {
       const e = estados[sel.entidad];
-      const url = camaraEnLinea(e) ? urlCamara(e, true) : null;
-      const medio = url ? `<img src="${esc(url)}" alt="${esc(sel.nombre)}">` : `<span class="nada">${svg(ICONOS.camara, 40)}<span>${esc(T.sinConexion)}</span></span>`;
-      const chip = url ? `<span class="chipcam"><i></i><span>${esc(T.enVivo)}</span></span>` : `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
+      const ok = camaraEnLinea(e);
+      let medio;
+      let vivo = false;
+      if (!ok) medio = nada(T.sinConexion, 40);
+      else if (!sinFoto.has(sel.entidad)) {
+        medio = `<img src="${esc(urlCamara(e, true))}" alt="${esc(sel.nombre)}" data-foto="${esc(sel.entidad)}">`;
+        vivo = true;
+      } else if (camaraConVideo(e) && !vista.sinReproductor) {
+        medio = `<div class="vivo" data-vivo="${esc(sel.entidad)}" data-ajuste="cover"></div>`;
+        vivo = true;
+      } else medio = nada(T.sinImagen, 40);
+      const chip = vivo ? chipVivo : ok ? '' : `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
       cuerpo = `<div class="grande" data-grande="${esc(sel.entidad)}">${medio}${chip}<div class="piecam"><span><span class="n">${esc(sel.nombre)}</span><span class="l">${esc(sel.lugar)}</span></span><button class="cerrar vidrio" data-pantalla="1" aria-label="${esc(T.pantallaCompleta)}">${svg(ICONOS.completa, 22)}</button></div></div>`;
       boton = `<button class="btn-cam vidrio" data-camaras-todas="1">${svg(ICONOS.rejilla, 18)}<span>${esc(T.verTodas)}</span></button>`;
     } else {
+      let enVivo = 0;
       cuerpo = `<div class="rejilla">${camaras
         .map((c) => {
           const e = estados[c.entidad];
           const ok = camaraEnLinea(e);
-          const medio = ok ? `<img src="${esc(urlCamara(e, false, vista.tic || 0))}" alt="" loading="lazy">` : `<span class="nada">${svg(ICONOS.camara, 32)}<span>${esc(T.sinConexion)}</span></span>`;
-          const chip = ok ? '' : `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
-          return `<button class="camara" data-camara="${esc(c.entidad)}" aria-label="${esc(T.abrirCamara(c.nombre))}"${ok ? '' : ' disabled'}>${medio}${chip}<span class="piecam"><span><span class="n">${esc(c.nombre)}</span><span class="l">${esc(c.lugar)}</span></span></span></button>`;
+          let medio;
+          let chip = '';
+          let abre = ok;
+          if (!ok) {
+            medio = nada(T.sinConexion, 32);
+            chip = `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
+          } else if (!sinFoto.has(c.entidad)) {
+            medio = `<img src="${esc(urlCamara(e, false, vista.tic || 0))}" alt="" loading="lazy" data-foto="${esc(c.entidad)}">`;
+          } else if (camaraConVideo(e) && !vista.sinReproductor) {
+            if (enVivo < MAX_VIVO) {
+              enVivo += 1;
+              medio = `<div class="vivo" data-vivo="${esc(c.entidad)}" data-ajuste="cover"></div>`;
+              chip = chipVivo;
+            } else medio = nada(T.tocaVivo, 32);
+          } else {
+            medio = nada(T.sinImagen, 32);
+            abre = false;
+          }
+          return `<button class="camara" data-camara="${esc(c.entidad)}" aria-label="${esc(T.abrirCamara(c.nombre))}"${abre ? '' : ' disabled'}>${medio}${chip}<span class="piecam"><span><span class="n">${esc(c.nombre)}</span><span class="l">${esc(c.lugar)}</span></span></span></button>`;
         })
         .join('')}</div>`;
     }
@@ -1632,8 +1795,9 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const chips = [];
     const aire = todas.find((f) => f.tipo === 'clima' && f.disponible && num(f.estado?.actual) !== null);
     if (aire) chips.push(htmlChip(ICONOS.termometro, T.interior, `${grados(aire.estado.actual)}°`));
-    const sonando = todas.find((f) => f.tipo === 'bocina' && f.on);
-    if (sonando) chips.push(htmlChip(ICONOS.musica, sonando.nombre, T.sonando));
+    // PANEL-06: el chip de audio va primero y abre el panel lateral con todas las bocinas de la casa.
+    const bocinas = modelo.bocinas || [];
+    if (bocinas.length) chips.push(htmlChipAudio(CASA, bocinas, estados, idioma, vista.audio === CASA));
     const camarasEnLinea = camaras.filter((c) => camaraEnLinea(estados[c.entidad])).length;
     if (camaras.length) chips.push(htmlChip(ICONOS.camara, T.camaras, T.camarasChip(camarasEnLinea)));
     const persianas = todas.filter((f) => f.tipo === 'cortina' && f.disponible);
@@ -1656,19 +1820,37 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
   } else {
     const fichas = cuartoSel.dispositivos.map((d) => fichaDe(d, estados, idioma));
     const enc = encabezadoCuarto(fichas, estados, idioma);
-    centro = `<div class="sobre">${esc(enc.sobre)}</div><div class="titulo">${esc(cuartoSel.nombre)}</div><div class="sub">${esc(enc.sub)}</div>`;
+    const bocinas = cuartoSel.bocinas || [];
+    const chip = bocinas.length ? `<div class="chips">${htmlChipAudio(cuartoSel.id, bocinas, estados, idioma, vista.audio === cuartoSel.id)}</div>` : '';
+    centro = `<div class="sobre">${esc(enc.sobre)}</div><div class="titulo">${esc(cuartoSel.nombre)}</div><div class="sub">${esc(enc.sub)}</div>${chip}`;
     const html = fichas.map((f) => htmlFicha(f, opc(f))).join('');
     const puntos = fichas.length > 6 ? '<div class="puntos der" aria-hidden="true"><span></span><span></span></div>' : '';
-    abajo = `<div class="abajo"><div class="fila der" data-fila="${esc(cuartoSel.id)}">${html}</div>${puntos}</div>`;
+    if (fichas.length) abajo = `<div class="abajo"><div class="fila der" data-fila="${esc(cuartoSel.id)}">${html}</div>${puntos}</div>`;
   }
   const aviso = vista.aviso ? `<div class="aviso" role="status">${esc(vista.aviso)}</div>` : '';
+  // PANEL-06: el panel lateral de audio (solo en la pestaña de donde se abrió).
+  let audio = '';
+  const grupo = grupoAudio(modelo, vista.audio);
+  if (grupo && !enCamaras && (vista.audio === CASA ? !cuartoSel : cuartoSel && cuartoSel.id === vista.audio)) {
+    audio = htmlLateralAudio(grupo.id === CASA ? T.audioCasa : T.audioDe(grupo.nombre), grupo.bocinas, estados, idioma, vista);
+  }
   let ventana = '';
   if (vista.ventana) {
-    const cuarto = modelo.cuartos.find((c) => c.dispositivos.some((x) => x.entidad === vista.ventana));
-    const d = cuarto ? cuarto.dispositivos.find((x) => x.entidad === vista.ventana) : modelo.accesos.find((x) => x.entidad === vista.ventana);
+    const cuarto = modelo.cuartos.find((c) => [...c.dispositivos, ...(c.bocinas || [])].some((x) => x.entidad === vista.ventana));
+    const d = cuarto
+      ? [...cuarto.dispositivos, ...(cuarto.bocinas || [])].find((x) => x.entidad === vista.ventana)
+      : modelo.accesos.find((x) => x.entidad === vista.ventana) || (modelo.bocinas || []).find((x) => x.entidad === vista.ventana);
     if (d) ventana = htmlVentana(d, estados, idioma, vista, cuarto && cuarto.id !== OTROS ? cuarto.nombre : '');
   }
-  return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${ventana}${aviso}</div>`;
+  return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
+}
+
+// PANEL-06: el grupo de bocinas de un chip (CASA = todas; si no, las del cuarto), o null si ya no hay.
+function grupoAudio(modelo, id) {
+  if (!id || !modelo) return null;
+  if (id === CASA) return (modelo.bocinas || []).length ? { id: CASA, nombre: '', bocinas: modelo.bocinas } : null;
+  const c = (modelo.cuartos || []).find((x) => x.id === id);
+  return c && (c.bocinas || []).length ? { id: c.id, nombre: c.nombre, bocinas: c.bocinas } : null;
 }
 
 // ------------------------------------------------------------------ actualizar sin reemplazar
@@ -1683,12 +1865,15 @@ function morph(a, b) {
   for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
   for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
   if ('disabled' in a && a.disabled !== b.hasAttribute('disabled')) a.disabled = b.hasAttribute('disabled');
+  // PANEL-06: lo de adentro de un espacio de video lo maneja la tarjeta (el reproductor de HA); no se toca.
+  if (a.hasAttribute && a.hasAttribute('data-vivo')) return;
   const ac = [...a.childNodes];
   const bc = [...b.childNodes];
+  const clave = (n) => (n.nodeType === 1 ? `${n.getAttribute('data-ficha')}|${n.getAttribute('data-bocina')}|${n.getAttribute('data-vivo')}` : '');
   bc.forEach((y, i) => {
     const x = ac[i];
     if (!x) a.appendChild(y);
-    else if (x.nodeType !== y.nodeType || x.nodeName !== y.nodeName || (x.nodeType === 1 && x.getAttribute('data-ficha') !== y.getAttribute('data-ficha'))) a.replaceChild(y, x);
+    else if (x.nodeType !== y.nodeType || x.nodeName !== y.nodeName || clave(x) !== clave(y)) a.replaceChild(y, x);
     else morph(x, y);
   });
   for (let i = bc.length; i < ac.length; i += 1) a.removeChild(ac[i]);
@@ -1717,6 +1902,9 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._ventana = null;
       this._arrastre = null;
       this._camara = null;
+      this._audio = null; // PANEL-06: grupo del panel lateral de audio abierto (CASA o id del cuarto)
+      this._sinFoto = new Map(); // PANEL-06: cámara → hasta cuándo se trata como «sin foto»
+      this._vivos = new Map(); // PANEL-06: cámara → su reproductor de Home Assistant (ha-camera-stream)
       this._reg = null;
       this._unsubs = [];
       this._espera = new Map();
@@ -1739,28 +1927,55 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       r.addEventListener('pointerup', () => this._soltar());
       r.addEventListener('pointercancel', () => this._soltar());
       r.addEventListener('contextmenu', (ev) => {
-        const b = ev.target.closest('[data-ficha]');
+        const b = ev.target.closest('[data-ficha], [data-bocina]');
         if (!b) return;
         ev.preventDefault();
-        if (this._abrirVentana(b.dataset.ficha)) this._suprimirClic = Date.now();
+        if (b.dataset.bocina && ev.target.closest('button, input')) return;
+        if (this._abrirVentana(b.dataset.ficha || b.dataset.bocina)) this._suprimirClic = Date.now();
       });
-      // Barras de la ventana: «input» mientras se arrastra, «change» al soltar (ahí se manda la orden).
+      // Barras: «input» mientras se arrastra, «change» al soltar (ahí se manda la orden).
+      // La de la ventana es del aparato de la ventana; las del panel de audio dicen de qué bocina son.
       r.addEventListener('input', (ev) => {
         const i = ev.target;
-        if (!i.matches || !i.matches('input[data-control]') || !this._ventana) return;
-        this._arrastre = { entidad: this._ventana, control: i.dataset.control, valor: Number(i.value), hasta: Date.now() + 60000 };
+        const entidad = i.matches && i.matches('input[data-control]') ? i.dataset.entidad || this._ventana : null;
+        if (!entidad) return;
+        this._arrastre = { entidad, control: i.dataset.control, valor: Number(i.value), hasta: Date.now() + 60000 };
         this._render();
       });
       r.addEventListener('change', (ev) => {
         const i = ev.target;
-        if (!i.matches || !i.matches('input[data-control]') || !this._ventana) return;
-        this._arrastre = { entidad: this._ventana, control: i.dataset.control, valor: Number(i.value), hasta: Date.now() + 2500 };
-        this._control(i.dataset.control, i.value);
+        const entidad = i.matches && i.matches('input[data-control]') ? i.dataset.entidad || this._ventana : null;
+        if (!entidad) return;
+        this._arrastre = { entidad, control: i.dataset.control, valor: Number(i.value), hasta: Date.now() + 2500 };
+        this._control(i.dataset.control, i.value, entidad);
         setTimeout(() => this._render(), 2600);
       });
+      // PANEL-06: si la foto (o el MJPEG) de una cámara falla, se marca «sin foto» y se usa el video de HA.
+      // Los errores de <img> no suben: se atrapan de camino hacia abajo (captura).
+      r.addEventListener(
+        'error',
+        (ev) => {
+          const img = ev.target;
+          if (!img || img.localName !== 'img' || !img.dataset || !img.dataset.foto) return;
+          if (this._marcarSinFoto(img.dataset.foto)) this._render();
+        },
+        true,
+      );
+      this._alPantalla = () => this._render();
       this.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape' && this._ventana) this._cerrarVentana();
+        if (ev.key !== 'Escape') return;
+        if (this._ventana) this._cerrarVentana();
+        else if (this._audio) this._cerrarAudio();
       });
+    }
+
+    // PANEL-06: marca una cámara «sin foto» por SIN_FOTO_MS. Devuelve true si cambió algo.
+    _marcarSinFoto(entidad) {
+      if (typeof entidad !== 'string' || !ID_CAMARA.test(entidad)) return false;
+      const ya = this._sinFoto.get(entidad);
+      if (ya && ya > Date.now()) return false;
+      this._sinFoto.set(entidad, Date.now() + SIN_FOTO_MS);
+      return true;
     }
 
     setConfig(c) {
@@ -1803,6 +2018,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     connectedCallback() {
       // Cada 5 s: el reloj y, en la pestaña Cámaras, la imagen nueva de cada cámara (cambia cada 10 s).
       this._reloj = setInterval(() => this._render(), 5000);
+      document.addEventListener('fullscreenchange', this._alPantalla);
       if (this._hass && !this._conectado) this._conectar();
       this._kiosko();
       // Home Assistant termina de armar su pantalla después de conectar la tarjeta.
@@ -1811,6 +2027,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     disconnectedCallback() {
       clearInterval(this._reloj);
+      document.removeEventListener('fullscreenchange', this._alPantalla);
+      this._vivos.clear();
       clearTimeout(this._tRecarga);
       clearTimeout(this._tKiosko);
       this._quitarKiosko();
@@ -1950,6 +2168,10 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       }
       if (this._arrastre && Date.now() > this._arrastre.hasta) this._arrastre = null;
       if (this._camara && !(this._modeloActual.camaras || []).some((c) => c.entidad === this._camara)) this._camara = null;
+      // PANEL-06: si el grupo de audio ya no tiene bocinas (les quitaron la etiqueta), el panel lateral se cierra.
+      if (this._audio && !grupoAudio(this._modeloActual, this._audio)) this._audio = null;
+      const ahora = Date.now();
+      for (const [ent, hasta] of this._sinFoto) if (hasta <= ahora) this._sinFoto.delete(ent);
       const T = TXT[idioma];
       const html = this._reg
         ? dibujar({
@@ -1959,22 +2181,90 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
             marca: this._cfg.marca || this._hass.config?.location_name || '',
             fondo: this._cfg.fondo || null,
             zona: this._hass.config?.time_zone || '',
-            vista: { pestana: this._pestana, espera: new Set(this._espera.keys()), activada: this._activada?.entidad, aviso: this._aviso, ventana: this._ventana, arrastre: this._arrastre, camara: this._camara, tic: Math.floor(Date.now() / 10000) },
+            vista: {
+              pestana: this._pestana,
+              espera: new Set(this._espera.keys()),
+              activada: this._activada?.entidad,
+              aviso: this._aviso,
+              ventana: this._ventana,
+              arrastre: this._arrastre,
+              camara: this._camara,
+              tic: Math.floor(Date.now() / 10000),
+              audio: this._audio,
+              sinFoto: new Set(this._sinFoto.keys()),
+              sinReproductor: this._sinReproductor === true,
+            },
           })
         : `<div class="raiz"><div class="velo"></div><div class="capa der"><div class="sobre">${this._errorReg ? esc(T.errorRegistro) : ''}</div></div></div>`;
-      if (html === this._html) return;
-      const nuevo = document.createElement('template');
-      nuevo.innerHTML = html;
-      const viejo = raiz.firstElementChild;
-      if (viejo && nuevo.content.firstElementChild) morph(viejo, nuevo.content.firstElementChild);
-      else raiz.replaceChildren(nuevo.content);
-      this._html = html;
+      if (html !== this._html) {
+        const nuevo = document.createElement('template');
+        nuevo.innerHTML = html;
+        const viejo = raiz.firstElementChild;
+        if (viejo && nuevo.content.firstElementChild) morph(viejo, nuevo.content.firstElementChild);
+        else raiz.replaceChildren(nuevo.content);
+        this._html = html;
+      }
+      this._montarVivos();
+    }
+
+    // PANEL-06: pone el reproductor de video de Home Assistant en cada espacio [data-vivo] y le pasa
+    // el estado nuevo (el token de la cámara cambia cada pocos minutos). Un reproductor por cámara,
+    // reutilizado mientras su espacio siga en pantalla; al salir de la pestaña se suelta.
+    _montarVivos() {
+      const espacios = this.shadowRoot ? [...this.shadowRoot.querySelectorAll('[data-vivo]')] : [];
+      for (const [ent, el] of this._vivos) if (!espacios.some((s) => s.dataset.vivo === ent && s.contains(el))) this._vivos.delete(ent);
+      if (!espacios.length || !this._hass) return;
+      if (!customElements.get('ha-camera-stream')) {
+        this._cargarReproductor(espacios[0].dataset.vivo);
+        return;
+      }
+      const completa = typeof document !== 'undefined' ? document.fullscreenElement : null;
+      for (const s of espacios) {
+        const ent = s.dataset.vivo;
+        const estado = this._hass.states[ent];
+        if (!estado) continue;
+        let el = this._vivos.get(ent);
+        if (!el || !s.contains(el)) {
+          el = document.createElement('ha-camera-stream');
+          el.muted = true;
+          el.controls = false;
+          el.allowExoPlayer = false;
+          s.replaceChildren(el);
+          this._vivos.set(ent, el);
+        }
+        const ajuste = completa && completa.contains && completa.contains(s) ? 'contain' : s.dataset.ajuste || 'cover';
+        if (el.fitMode !== ajuste) el.fitMode = ajuste;
+        if (el.hass !== this._hass) el.hass = this._hass;
+        if (el.stateObj !== estado) el.stateObj = estado;
+      }
+    }
+
+    // PANEL-06: ha-camera-stream es del propio Home Assistant, pero se carga cuando alguna tarjeta
+    // de cámara lo pide. Se le pide a HA una tarjeta de cámara (sin mostrarla) para que lo cargue;
+    // si en 10 s no aparece, la cámara dice «Sin imagen».
+    _cargarReproductor(entidad) {
+      if (this._cargando || this._sinReproductor) return;
+      this._cargando = (async () => {
+        try {
+          const ayudas = typeof window.loadCardHelpers === 'function' ? await window.loadCardHelpers() : null;
+          if (ayudas && ayudas.createCardElement) {
+            const t = ayudas.createCardElement({ type: 'picture-entity', entity: entidad, camera_view: 'live', show_name: false, show_state: false });
+            if (t) t.hass = this._hass;
+          }
+        } catch (e) {
+          console.warn('[vizions-panel] reproductor', e);
+        }
+        const listo = await Promise.race([customElements.whenDefined('ha-camera-stream').then(() => true), new Promise((r) => setTimeout(() => r(false), 10000))]);
+        this._cargando = null;
+        if (!listo) this._sinReproductor = true;
+        this._render();
+      })();
     }
 
     _dispositivo(entidad) {
       const m = this._modeloActual;
       if (!m) return null;
-      return [...m.escenas, ...m.accesos, ...m.cuartos.flatMap((c) => c.dispositivos)].find((x) => x.entidad === entidad) || null;
+      return [...m.escenas, ...m.accesos, ...(m.bocinas || []), ...m.cuartos.flatMap((c) => [...c.dispositivos, ...(c.bocinas || [])])].find((x) => x.entidad === entidad) || null;
     }
 
     _abrirVentana(entidad) {
@@ -2003,12 +2293,14 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     _presionar(ev) {
       if (ev.button > 0) return;
-      const b = ev.target.closest('[data-ficha]');
+      const b = ev.target.closest('[data-ficha], [data-bocina]');
       clearTimeout(this._lp);
       this._lp = null;
       if (!b || b.disabled) return;
+      // En la tarjeta de una bocina, los botones y la barra son suyos: mantenerlos no abre la ventana.
+      if (b.dataset.bocina && ev.target.closest('button, input')) return;
       this._lpInicio = { x: ev.clientX, y: ev.clientY };
-      const entidad = b.dataset.ficha;
+      const entidad = b.dataset.ficha || b.dataset.bocina;
       this._lp = setTimeout(() => {
         this._lp = null;
         // Un toque largo nunca prende ni apaga, tenga ventana o no.
@@ -2036,9 +2328,23 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._cerrarVentana();
         return;
       }
+      // PANEL-06: el panel lateral de audio.
+      if (ev.target.closest('[data-cerrar-audio]')) {
+        this._cerrarAudio();
+        return;
+      }
+      const chipAudio = ev.target.closest('[data-audio]');
+      if (chipAudio) {
+        if (this._audio === chipAudio.dataset.audio) this._cerrarAudio();
+        else this._abrirAudio(chipAudio.dataset.audio);
+        return;
+      }
       const ctl = ev.target.closest('button[data-control]');
       if (ctl) {
-        this._control(ctl.dataset.control, ctl.dataset.valor);
+        const ent = ctl.dataset.entidad || this._ventana;
+        // En el panel de audio, un botón (silencio, reproducir…) manda sobre el número que el dedo dejó en la barra.
+        if (ctl.dataset.entidad && this._arrastre && this._arrastre.entidad === ent) this._arrastre = null;
+        if (!ctl.disabled) this._control(ctl.dataset.control, ctl.dataset.valor, ent);
         return;
       }
       const cam = ev.target.closest('[data-camara]');
@@ -2065,6 +2371,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       if (tab) {
         this._ventana = null;
         this._camara = null;
+        this._audio = null;
         this._pestana = tab.dataset.tab;
         try {
           localStorage.setItem('vizions-panel-pestana', this._pestana);
@@ -2078,12 +2385,27 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       if (boton && !boton.disabled) this._tocar(boton.dataset.ficha);
     }
 
-    _control(control, valor) {
+    _control(control, valor, entidad = this._ventana) {
       const h = this._hass;
-      const d = this._ventana ? this._dispositivo(this._ventana) : null;
+      const d = entidad ? this._dispositivo(entidad) : null;
       if (!h || !d) return;
       const orden = ordenControl(d, h.states, control, valor);
       if (orden) this._enviar(d, orden);
+    }
+
+    // PANEL-06: abre el panel lateral de audio de un grupo (CASA o un cuarto) y le pasa el foco.
+    _abrirAudio(grupo) {
+      if (!grupoAudio(this._modeloActual, grupo)) return;
+      this._audio = grupo;
+      this._render();
+      const lat = this.shadowRoot.querySelector('.lateral');
+      if (lat) lat.focus({ preventScroll: true });
+    }
+
+    _cerrarAudio() {
+      this._audio = null;
+      this._arrastre = null;
+      this._render();
     }
 
     async _tocar(entidad) {
@@ -2134,6 +2456,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, dibujar, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, dibujar, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

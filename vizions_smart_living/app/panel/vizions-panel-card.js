@@ -1,6 +1,6 @@
-// Vizions Panel 0.5.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.5.1 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: adcf354fa8b4f586cd7b622904b7ab8f
+// Huella del contenido: ae3c701f137e27cd29f9009df9c26bf7
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -866,13 +866,17 @@ const __vp_tarjeta = (() => {
 //    cámaras sin foto; las demás dicen «Toca para ver en vivo». Sin foto y sin video:
 //    «Sin imagen». Las cámaras con foto siguen igual.
 //
+// VIZIONS-PANEL-06b (0.5.1): el botón de pantalla completa de la cámara grande ahora también sale
+// (antes solo entraba, y para salir hacía falta el gesto «Atrás» de Android; en una tablet de kiosko
+// sin gestos no había salida). Cambia de icono y de texto. Esc también sale.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.5.0';
+const VERSION_PANEL = '0.5.1';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
@@ -957,7 +961,7 @@ const TXT = {
     errorRegistro: 'No se pudo leer Home Assistant. Reintentando…',
     errorOrden: 'No se pudo enviar la orden. Intenta de nuevo.',
     cuartos: 'Cuartos', accesos: 'Accesos rápidos',
-    camaras: 'Cámaras', enLinea: (n) => `${n} EN LÍNEA`, sinConexionN: (n) => `${n} SIN CONEXIÓN`, sinConexion: 'Sin conexión', enVivo: 'EN VIVO', verTodas: 'Ver todas', pantallaCompleta: 'Pantalla completa', abrirCamara: (n) => `Abrir ${n} en grande`, camarasChip: (n) => (n === 1 ? '1 en línea' : `${n} en línea`),
+    camaras: 'Cámaras', enLinea: (n) => `${n} EN LÍNEA`, sinConexionN: (n) => `${n} SIN CONEXIÓN`, sinConexion: 'Sin conexión', enVivo: 'EN VIVO', verTodas: 'Ver todas', pantallaCompleta: 'Pantalla completa', salirPantalla: 'Salir de pantalla completa', abrirCamara: (n) => `Abrir ${n} en grande`, camarasChip: (n) => (n === 1 ? '1 en línea' : `${n} en línea`),
     brillo: 'Brillo', tono: 'Tono de blanco', tonos: { 2700: 'Cálido', 4000: 'Neutro', 6500: 'Frío' }, color: 'Color',
     colores: { ambar: 'Ámbar', coral: 'Coral', rosa: 'Rosa', violeta: 'Violeta', azul: 'Azul', turquesa: 'Turquesa' },
     apagar: 'Apagar', encender: 'Encender', listo: 'Listo', cerrar: 'Cerrar',
@@ -988,7 +992,7 @@ const TXT = {
     errorRegistro: 'Could not read Home Assistant. Retrying…',
     errorOrden: 'The command could not be sent. Please try again.',
     cuartos: 'Rooms', accesos: 'Quick access',
-    camaras: 'Cameras', enLinea: (n) => `${n} ONLINE`, sinConexionN: (n) => `${n} OFFLINE`, sinConexion: 'Offline', enVivo: 'LIVE', verTodas: 'View all', pantallaCompleta: 'Full screen', abrirCamara: (n) => `Open ${n} full size`, camarasChip: (n) => `${n} online`,
+    camaras: 'Cameras', enLinea: (n) => `${n} ONLINE`, sinConexionN: (n) => `${n} OFFLINE`, sinConexion: 'Offline', enVivo: 'LIVE', verTodas: 'View all', pantallaCompleta: 'Full screen', salirPantalla: 'Exit full screen', abrirCamara: (n) => `Open ${n} full size`, camarasChip: (n) => `${n} online`,
     brillo: 'Brightness', tono: 'White tone', tonos: { 2700: 'Warm', 4000: 'Neutral', 6500: 'Cool' }, color: 'Color',
     colores: { ambar: 'Amber', coral: 'Coral', rosa: 'Pink', violeta: 'Violet', azul: 'Blue', turquesa: 'Turquoise' },
     apagar: 'Turn off', encender: 'Turn on', listo: 'Done', cerrar: 'Close',
@@ -1023,6 +1027,7 @@ const ICONOS = {
   camara: 'M16 13l5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5 M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
   ecualizador: 'M6 19v-6 M12 19V5 M18 19v-9', derecha: 'M9 6l6 6-6 6',
   rejilla: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z', completa: 'M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3',
+  reducir: 'M8 3v3a2 2 0 0 1-2 2H3 M21 8h-3a2 2 0 0 1-2-2V3 M3 16h3a2 2 0 0 1 2 2v3 M16 21v-3a2 2 0 0 1 2-2h3',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -1750,7 +1755,7 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
         vivo = true;
       } else medio = nada(T.sinImagen, 40);
       const chip = vivo ? chipVivo : ok ? '' : `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
-      cuerpo = `<div class="grande" data-grande="${esc(sel.entidad)}">${medio}${chip}<div class="piecam"><span><span class="n">${esc(sel.nombre)}</span><span class="l">${esc(sel.lugar)}</span></span><button class="cerrar vidrio" data-pantalla="1" aria-label="${esc(T.pantallaCompleta)}">${svg(ICONOS.completa, 22)}</button></div></div>`;
+      cuerpo = `<div class="grande" data-grande="${esc(sel.entidad)}">${medio}${chip}<div class="piecam"><span><span class="n">${esc(sel.nombre)}</span><span class="l">${esc(sel.lugar)}</span></span><button class="cerrar vidrio" data-pantalla="1" aria-pressed="${vista.completa ? 'true' : 'false'}" aria-label="${esc(vista.completa ? T.salirPantalla : T.pantallaCompleta)}">${svg(vista.completa ? ICONOS.reducir : ICONOS.completa, 22)}</button></div></div>`;
       boton = `<button class="btn-cam vidrio" data-camaras-todas="1">${svg(ICONOS.rejilla, 18)}<span>${esc(T.verTodas)}</span></button>`;
     } else {
       let enVivo = 0;
@@ -1843,6 +1848,21 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     if (d) ventana = htmlVentana(d, estados, idioma, vista, cuarto && cuarto.id !== OTROS ? cuarto.nombre : '');
   }
   return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
+}
+
+// PANEL-06b: ¿la cámara grande de esta tarjeta está en pantalla completa? (dentro de la sombra)
+function enPantallaCompleta(raiz) {
+  const fe = raiz && (raiz.fullscreenElement || raiz.webkitFullscreenElement);
+  return fe && fe.classList && fe.classList.contains('grande') ? fe : null;
+}
+function salirDePantallaCompleta() {
+  try {
+    const salir = document.exitFullscreen || document.webkitExitFullscreen;
+    const r = salir ? salir.call(document) : null;
+    if (r && r.catch) r.catch(() => {});
+  } catch {
+    /* ya no estaba */
+  }
 }
 
 // PANEL-06: el grupo de bocinas de un chip (CASA = todas; si no, las del cuarto), o null si ya no hay.
@@ -1964,7 +1984,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._alPantalla = () => this._render();
       this.addEventListener('keydown', (ev) => {
         if (ev.key !== 'Escape') return;
-        if (this._ventana) this._cerrarVentana();
+        if (enPantallaCompleta(this.shadowRoot)) salirDePantallaCompleta();
+        else if (this._ventana) this._cerrarVentana();
         else if (this._audio) this._cerrarAudio();
       });
     }
@@ -2193,6 +2214,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
               audio: this._audio,
               sinFoto: new Set(this._sinFoto.keys()),
               sinReproductor: this._sinReproductor === true,
+              completa: !!enPantallaCompleta(this.shadowRoot),
             },
           })
         : `<div class="raiz"><div class="velo"></div><div class="capa der"><div class="sobre">${this._errorReg ? esc(T.errorRegistro) : ''}</div></div></div>`;
@@ -2218,7 +2240,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._cargarReproductor(espacios[0].dataset.vivo);
         return;
       }
-      const completa = typeof document !== 'undefined' ? document.fullscreenElement : null;
+      // document.fullscreenElement da el anfitrión de la tarjeta (sombra); el elemento real lo da la raíz de sombra.
+      const completa = enPantallaCompleta(this.shadowRoot);
       for (const s of espacios) {
         const ent = s.dataset.vivo;
         const estado = this._hass.states[ent];
@@ -2359,11 +2382,16 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         return;
       }
       if (ev.target.closest('[data-pantalla]')) {
-        const g = this.shadowRoot.querySelector('.grande');
-        try {
-          if (g && g.requestFullscreen) g.requestFullscreen();
-        } catch {
-          /* sin pantalla completa */
+        // PANEL-06b: el mismo botón entra y sale (en kiosko sin gestos no hay otra salida).
+        if (enPantallaCompleta(this.shadowRoot)) salirDePantallaCompleta();
+        else {
+          const g = this.shadowRoot.querySelector('.grande');
+          try {
+            const r = g && (g.requestFullscreen || g.webkitRequestFullscreen) ? (g.requestFullscreen || g.webkitRequestFullscreen).call(g) : null;
+            if (r && r.catch) r.catch(() => {});
+          } catch {
+            /* sin pantalla completa */
+          }
         }
         return;
       }
@@ -2456,6 +2484,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, dibujar, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, dibujar, enPantallaCompleta, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

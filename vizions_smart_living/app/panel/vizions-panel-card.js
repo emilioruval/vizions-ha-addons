@@ -1,6 +1,6 @@
-// Vizions Panel 0.5.1 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.6.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: ae3c701f137e27cd29f9009df9c26bf7
+// Huella del contenido: 5aeee164057e2481d4a1b1a74cb38e12
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -870,13 +870,24 @@ const __vp_tarjeta = (() => {
 // (antes solo entraba, y para salir hacía falta el gesto «Atrás» de Android; en una tablet de kiosko
 // sin gestos no había salida). Cambia de icono y de texto. Esc también sale.
 //
+// VIZIONS-PANEL-07 (0.6.0, mockup aprobado el 7 nov 2026):
+//  · Chip de aires: en Casa (todos los aires de la casa, con la temperatura de adentro; sustituye
+//    al chip «Interior») y en cada cuarto con aire (los de ese cuarto). Abre un panel lateral
+//    sólido con una tarjeta por aire: encender/apagar, − temperatura + y el modo. Mantener
+//    presionada la tarjeta abre la ventana completa del aire (ventilador incluido). Las fichas de
+//    aire se quedan en la fila del cuarto y en Accesos rápidos.
+//  · El chip de cámaras de Casa se puede tocar: abre un panel lateral con las cámaras (mismas
+//    reglas de video en vivo: hasta 4, «Toca para ver en vivo», «Sin imagen»). Tocar una cámara
+//    la abre en grande en la pestaña Cámaras; «Ver todas» lleva a la cuadrícula.
+//  · Un solo panel lateral a la vez (audio, aires o cámaras).
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.5.1';
+const VERSION_PANEL = '0.6.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
@@ -972,6 +983,8 @@ const TXT = {
     subir: 'Subir', detener: 'Detener', bajar: 'Bajar', posicion: 'Posición',
     bocinas: (n) => `${n} bocinas`, reproduciendoN: (n) => `${n} reproduciendo`, enPausa: 'en pausa', sinMusicaMin: 'sin música', sinConexionMin: 'sin conexión',
     audioCasa: 'Audio de la casa', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Abrir el audio', sinImagen: 'Sin imagen', tocaVivo: 'Toca para ver en vivo',
+    aires: (n) => `${n} aires`, encendidosN: (n) => (n === 1 ? '1 encendido' : `${n} encendidos`), apagadosMin: 'apagados', adentro: (t) => `${t}° adentro`,
+    airesCasa: 'Aires de la casa', airesDe: (c) => `Aires · ${c}`, abrirAires: 'Abrir los aires', abrirCamaras: 'Abrir las cámaras', camarasLat: (n) => `Cámaras · ${n} en línea`,
     clima: { 'clear-night': 'DESPEJADO', cloudy: 'NUBLADO', exceptional: 'EXCEPCIONAL', fog: 'NIEBLA', hail: 'GRANIZO', lightning: 'TORMENTA', 'lightning-rainy': 'TORMENTA', partlycloudy: 'PARCIALMENTE NUBLADO', pouring: 'AGUACERO', rainy: 'LLUVIA', snowy: 'NIEVE', 'snowy-rainy': 'AGUANIEVE', sunny: 'SOLEADO', windy: 'VIENTO', 'windy-variant': 'VIENTO' },
   },
   en: {
@@ -1003,6 +1016,8 @@ const TXT = {
     subir: 'Up', detener: 'Stop', bajar: 'Down', posicion: 'Position',
     bocinas: (n) => `${n} speakers`, reproduciendoN: (n) => `${n} playing`, enPausa: 'paused', sinMusicaMin: 'no music', sinConexionMin: 'offline',
     audioCasa: 'Home audio', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Open audio', sinImagen: 'No image', tocaVivo: 'Tap to watch live',
+    aires: (n) => `${n} A/C units`, encendidosN: (n) => `${n} on`, apagadosMin: 'off', adentro: (t) => `${t}° inside`,
+    airesCasa: 'Home A/C', airesDe: (c) => `A/C · ${c}`, abrirAires: 'Open A/C', abrirCamaras: 'Open cameras', camarasLat: (n) => `Cameras · ${n} online`,
     clima: { 'clear-night': 'CLEAR', cloudy: 'CLOUDY', exceptional: 'EXCEPTIONAL', fog: 'FOG', hail: 'HAIL', lightning: 'STORM', 'lightning-rainy': 'STORM', partlycloudy: 'PARTLY CLOUDY', pouring: 'POURING', rainy: 'RAIN', snowy: 'SNOW', 'snowy-rainy': 'SLEET', sunny: 'SUNNY', windy: 'WINDY', 'windy-variant': 'WINDY' },
   },
 };
@@ -1028,6 +1043,7 @@ const ICONOS = {
   ecualizador: 'M6 19v-6 M12 19V5 M18 19v-9', derecha: 'M9 6l6 6-6 6',
   rejilla: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z', completa: 'M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3',
   reducir: 'M8 3v3a2 2 0 0 1-2 2H3 M21 8h-3a2 2 0 0 1-2-2V3 M3 16h3a2 2 0 0 1 2 2v3 M16 21v-3a2 2 0 0 1 2-2h3',
+  encendido: 'M12 2v10 M18.4 6.6a9 9 0 1 1-12.77.04',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -1154,9 +1170,11 @@ function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas 
   // Todas las bocinas de la casa (las del panel y las de inicio), una vez cada una.
   const vistas = new Set();
   const bocinas = [...lista, ...deInicio].filter((d) => d.tipo === 'bocina' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
+  // PANEL-07: todos los aires de la casa (los del panel y los de inicio), una vez cada uno.
+  const aires = [...lista, ...deInicio].filter((d) => d.tipo === 'clima' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
   const camaras = camarasEtiquetadas({ etiquetas, dispositivos, entidades, areas, estados }, etiqueta, idioma);
   const total = new Set([...lista, ...deInicio].map((d) => d.entidad)).size + camaras.length;
-  return { cuartos, escenas, accesos, bocinas, camaras, total };
+  return { cuartos, escenas, accesos, bocinas, aires, camaras, total };
 }
 
 // Qué hace un toque sobre la ficha (o null si el aparato no lo permite).
@@ -1492,13 +1510,13 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .chip.audio.quieto{background:rgba(31,90,74,0.5);border-color:rgba(93,202,165,0.45)}
 .chip.audio svg{stroke:#9FE1CB}
 .chip.audio .et{color:rgba(225,245,238,0.9)}
-.fondo-audio{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(5,9,11,0.55)}
+.fondo-lateral{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(5,9,11,0.55)}
 .lateral{position:absolute;top:calc(12px + var(--vp-arriba,0px));right:12px;bottom:calc(12px + var(--vp-abajo,0px));width:min(420px,calc(100% - 24px));padding:20px;border-radius:26px;background:#11181C;border:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;gap:16px;color:#FFFFFF}
 .lateral:focus{outline:none}
 .cab-lat{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}
 .cab-lat .cerrar{background:#1D262B;border:0}
-.lista-audio{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:12px;scrollbar-width:none}
-.lista-audio::-webkit-scrollbar{display:none}
+.lista-lat{flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:12px;scrollbar-width:none}
+.lista-lat::-webkit-scrollbar{display:none}
 .boc{flex:none;border-radius:20px;padding:16px;background:#16392F;border:1px solid #2F8A6F;display:flex;flex-direction:column;gap:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 .boc.quieta{background:#162126;border-color:#2A3A3F}
 .boc.nodisp{background:#15191C;border-color:#262C30}
@@ -1522,6 +1540,46 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .boc-vol .desl input[disabled]{cursor:default}
 .boc-num{font-size:15px;color:#9FE1CB;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
 .nodisp .boc-ctl,.nodisp .boc-vol{opacity:0.45}
+.chip.aire,.chip.cams{cursor:pointer;color:#FFFFFF;-webkit-user-select:none;user-select:none}
+.chip.aire{background:rgba(22,54,80,0.9);border:1px solid #5DA9E9}
+.chip.aire.quieto{background:rgba(22,54,80,0.5);border-color:rgba(93,169,233,0.45)}
+.chip.aire svg{stroke:#B5D4F4}
+.chip.aire .et{color:rgba(230,241,251,0.9)}
+.chip.cams{background:rgba(36,42,48,0.9);border:1px solid rgba(255,255,255,0.42)}
+.chip.cams i{width:8px;height:8px;border-radius:4px;background:#FF6B5E;flex:none}
+.chip.cams.quieto i{background:#9AA6A2}
+.chip.cams .et{color:rgba(255,255,255,0.8)}
+.clm{flex:none;border-radius:20px;padding:16px;background:#132C42;border:1px solid #378ADD;display:flex;flex-direction:column;gap:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.clm.quieta{background:#162126;border-color:#2A3A3F}
+.clm.nodisp{background:#15191C;border-color:#262C30}
+.clm-cab{display:flex;align-items:center;gap:12px;min-width:0}
+.clm-ic{width:44px;height:44px;border-radius:22px;background:#1D4568;color:#B5D4F4;display:flex;align-items:center;justify-content:center;flex:none}
+.quieta .clm-ic{background:#1F2F33;color:#8FA3A7}
+.nodisp .clm-ic{background:#22282C;color:#7D8593}
+.clm-ic svg,.clm-pw svg,.clm-btn svg{stroke:currentColor}
+.clm-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.clm-nom{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clm-sub{font-size:14px;color:#85B7EB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quieta .clm-sub{color:#8FA3A7}
+.nodisp .clm-sub{color:#8A929E}
+.clm-pw{width:48px;height:48px;border-radius:24px;border:0;background:#1F2F33;color:#D4E8E1;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;flex:none}
+.clm-pw.on{background:#FFFFFF;color:#111315}
+.clm-pw[disabled],.clm-btn[disabled]{opacity:0.35;cursor:default}
+.clm-temp{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.clm-cifra{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.clm-temp .num{font-size:44px;font-weight:300;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums}
+.clm-temp .ahora{font-size:13px;color:rgba(255,255,255,0.72);white-space:nowrap}
+.quieta .clm-temp .num{opacity:0.5}
+.clm-btn{width:48px;height:48px;border-radius:24px;border:0;background:#1D3A52;color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;flex:none}
+.quieta .clm-btn{background:#1F2F33}
+.clm-modos{display:flex;gap:6px;flex-wrap:wrap}
+.clm-modo{flex:1 1 auto;height:38px;padding:0 8px;border-radius:19px;border:0;background:#1D3A52;color:#FFFFFF;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.clm-modo.sel{background:#FFFFFF;color:#0C447C}
+.lateral .camara{flex:none;border-radius:18px}
+.lateral .piecam{padding:24px 14px 12px}
+.lateral .piecam .n{font-size:16px}
+.lateral .piecam .l{font-size:13px}
+.lateral .btn-cam{flex:none;justify-content:center;background:#1D262B;border:0}
 @media (max-width: 960px){.tabs{order:4;flex-basis:100%;margin:0}}
 @media (orientation: portrait){.fila.escenas .escena{min-width:0}.fila{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}.ficha{width:auto;height:140px}.puntos{display:none}}
 `;
@@ -1685,9 +1743,125 @@ function htmlBocina(d, estados, idioma, vista) {
   return `<div class="${clases.join(' ')}" data-bocina="${ent}"><div class="boc-cab"><span class="boc-ic">${svg(ICONOS.bocina, 22)}</span><span class="boc-tx"><span class="boc-nom">${esc(f.nombre)}</span><span class="boc-sub">${esc(sub)}</span></span></div>${ctl}${vol}</div>`;
 }
 
-function htmlLateralAudio(titulo, bocinas, estados, idioma, vista) {
+// PANEL-07: un panel lateral (audio, aires o cámaras). `cuerpo` va en la lista que se desliza; `pie` abajo.
+function htmlLateral(tipo, titulo, cuerpo, idioma, pie = '') {
   const T = TXT[idioma];
-  return `<div class="fondo-audio" data-cerrar-audio="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="1"><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-audio="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div><div class="lista-audio">${bocinas.map((d) => htmlBocina(d, estados, idioma, vista)).join('')}</div></div>`;
+  return `<div class="fondo-lateral" data-cerrar-lateral="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="${esc(tipo)}"><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-lateral="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div><div class="lista-lat">${cuerpo}</div>${pie}</div>`;
+}
+
+// ------------------------------------------------------------------ PANEL-07: aires (chip + panel lateral)
+
+// Lo que dice el chip de aires para un grupo (los de la casa o los de un cuarto).
+// En Casa (conTemp) también la temperatura de adentro: la del primer aire que la reporte.
+function resumenAires(aires, estados, idioma = 'es', conTemp = false) {
+  const T = TXT[idioma];
+  const fichas = aires.map((d) => fichaDe(d, estados, idioma));
+  const encendidos = fichas.filter((f) => f.disponible && f.on).length;
+  const conActual = fichas.find((f) => f.disponible && num(f.estado?.actual) !== null);
+  const temp = conTemp && conActual ? T.adentro(grados(conActual.estado.actual)) : '';
+  let nombre;
+  let estado;
+  if (fichas.length === 1) {
+    const f = fichas[0];
+    nombre = f.nombre;
+    estado = f.disponible ? f.sub : T.noDisp;
+  } else {
+    const algunoVivo = fichas.some((f) => f.disponible);
+    nombre = T.aires(fichas.length);
+    estado = encendidos ? T.encendidosN(encendidos) : algunoVivo ? T.apagadosMin : T.sinConexionMin;
+  }
+  return { nombre, estado: [estado, temp].filter(Boolean).join(' · '), encendidos };
+}
+
+function htmlChipAires(grupo, aires, estados, idioma, abierta) {
+  const T = TXT[idioma];
+  const r = resumenAires(aires, estados, idioma, grupo === CASA);
+  return `<button class="chip vidrio aire${r.encendidos ? '' : ' quieto'}" data-aire="${esc(grupo)}" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${T.abrirAires}: ${r.nombre} · ${r.estado}`)}">${svg(ICONOS.clima, 18)}<span class="va">${esc(r.nombre)}</span><span class="et">${esc(r.estado)}</span>${svg(ICONOS.derecha, 16)}</button>`;
+}
+
+// Una tarjeta de aire del panel lateral: encender/apagar, − temperatura + y el modo.
+function htmlAire(d, estados, idioma, lugar) {
+  const T = TXT[idioma];
+  const f = fichaDe(d, estados, idioma);
+  const c = f.disponible ? controlesDe(d, estados) : null;
+  const e = estados[d.entidad];
+  const a = e?.attributes || {};
+  const est = f.estado || {};
+  const prendido = f.disponible && f.on;
+  const verbo = prendido ? T.climaVerbo[est.accion] || T.climaVerbo[est.modo] || T.espera : T.apagado;
+  const sub = [lugar, f.disponible ? verbo : T.sinConexion].filter(Boolean).join(' · ');
+  const ahora = f.disponible && num(est.actual) !== null ? `<span class="ahora">${esc(T.ahora(grados(est.actual)))}</span>` : '';
+  const clases = ['clm'];
+  if (!f.disponible) clases.push('nodisp');
+  else if (!prendido) clases.push('quieta');
+  const ent = esc(d.entidad);
+  const puedeOnOff = !!c && c.caps.includes(prendido ? 'apagar' : 'encender');
+  const onoff = `<button class="clm-pw${prendido ? ' on' : ''}" data-control="onoff" data-valor="" data-entidad="${ent}" aria-pressed="${prendido ? 'true' : 'false'}" aria-label="${esc(prendido ? T.apagar : T.encender)}"${puedeOnOff ? '' : ' disabled'}>${svg(ICONOS.encendido, 22)}</button>`;
+  let cuerpo = '';
+  if (c && c.temp && num(a.temperature) !== null) {
+    const boton = (v, icono, etiqueta) => `<button class="clm-btn" data-control="temp" data-valor="${v}" data-entidad="${ent}" aria-label="${esc(etiqueta)}"${prendido ? '' : ' disabled'}>${svg(icono, 22)}</button>`;
+    cuerpo += `<div class="clm-temp">${boton('-', ICONOS.menos, T.bajarTemp)}<span class="clm-cifra"><span class="num">${esc(grados(a.temperature))}°</span>${ahora}</span>${boton('+', ICONOS.mas, T.subirTemp)}</div>`;
+  }
+  if (prendido && c && c.modos.length) {
+    cuerpo += `<div class="clm-modos">${c.modos.map((m) => `<button class="clm-modo${e.state === m ? ' sel' : ''}" data-control="modo" data-valor="${esc(m)}" data-entidad="${ent}" aria-pressed="${e.state === m ? 'true' : 'false'}">${esc(T.modos[m] || bonito(m))}</button>`).join('')}</div>`;
+  }
+  return `<div class="${clases.join(' ')}" data-clima="${ent}"><div class="clm-cab"><span class="clm-ic">${svg(ICONOS.clima, 22)}</span><span class="clm-tx"><span class="clm-nom">${esc(f.nombre)}</span><span class="clm-sub">${esc(sub)}</span></span>${onoff}</div>${cuerpo}</div>`;
+}
+
+// ------------------------------------------------------------------ PANEL-07: cámaras (chip de Casa + panel lateral)
+
+function htmlChipCamaras(camaras, estados, idioma, abierta) {
+  const T = TXT[idioma];
+  const n = camaras.filter((c) => camaraEnLinea(estados[c.entidad])).length;
+  return `<button class="chip vidrio cams${n ? '' : ' quieto'}" data-camaras-chip="1" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${T.abrirCamaras}: ${T.camarasChip(n)}`)}"><i></i>${svg(ICONOS.camara, 18)}<span class="va">${esc(T.camaras)}</span><span class="et">${esc(T.camarasChip(n))}</span>${svg(ICONOS.derecha, 16)}</button>`;
+}
+
+// PANEL-07: las celdas de cámara (cuadrícula de la pestaña Cámaras y panel lateral de Casa).
+// Mismas reglas que PANEL-06: foto si la hay; sin foto, video en vivo para las primeras MAX_VIVO;
+// las demás «Toca para ver en vivo»; sin foto ni video, «Sin imagen» (no se abre).
+function celdasCamaras(camaras, estados, idioma, vista) {
+  const T = TXT[idioma];
+  const sinFoto = vista.sinFoto || new Set();
+  const nada = (texto) => `<span class="nada">${svg(ICONOS.camara, 32)}<span>${esc(texto)}</span></span>`;
+  const chipVivo = `<span class="chipcam"><i></i><span>${esc(T.enVivo)}</span></span>`;
+  let enVivo = 0;
+  return camaras
+    .map((c) => {
+      const e = estados[c.entidad];
+      const ok = camaraEnLinea(e);
+      let medio;
+      let chip = '';
+      let abre = ok;
+      if (!ok) {
+        medio = nada(T.sinConexion);
+        chip = `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
+      } else if (!sinFoto.has(c.entidad)) {
+        medio = `<img src="${esc(urlCamara(e, false, vista.tic || 0))}" alt="" loading="lazy" data-foto="${esc(c.entidad)}">`;
+      } else if (camaraConVideo(e) && !vista.sinReproductor) {
+        if (enVivo < MAX_VIVO) {
+          enVivo += 1;
+          medio = `<div class="vivo" data-vivo="${esc(c.entidad)}" data-ajuste="cover"></div>`;
+          chip = chipVivo;
+        } else medio = nada(T.tocaVivo);
+      } else {
+        medio = nada(T.sinImagen);
+        abre = false;
+      }
+      return `<button class="camara" data-camara="${esc(c.entidad)}" aria-label="${esc(T.abrirCamara(c.nombre))}"${abre ? '' : ' disabled'}>${medio}${chip}<span class="piecam"><span><span class="n">${esc(c.nombre)}</span><span class="l">${esc(c.lugar)}</span></span></span></button>`;
+    })
+    .join('');
+}
+
+// PANEL-07: en el panel lateral (angosto) primero las cámaras que se ven; al final las de «Sin imagen»
+// y las sin conexión. Fuera de eso, el mismo orden que la cuadrícula.
+function ordenPanelCamaras(camaras, estados, vista = {}) {
+  const sinFoto = vista.sinFoto || new Set();
+  const rango = (c) => {
+    const e = estados[c.entidad];
+    if (!camaraEnLinea(e)) return 2;
+    return sinFoto.has(c.entidad) && !(camaraConVideo(e) && !vista.sinReproductor) ? 1 : 0;
+  };
+  return camaras.map((c, i) => [c, rango(c), i]).sort((x, y) => x[1] - y[1] || x[2] - y[2]).map((x) => x[0]);
 }
 
 const FMT_FECHA = new Map();
@@ -1716,6 +1890,8 @@ function partesHora(fecha, idioma, zona) {
 // Toda la pantalla como texto. `vista` trae lo que la tarjeta recuerda (pestaña, esperas…).
 function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, ahora = new Date(), zona = '', vista = {} }) {
   const T = TXT[idioma];
+  // PANEL-07: ¿el chip (tipo, grupo) es el del panel lateral abierto?
+  const abierto = (tipo, grupo) => !!vista.lateral && vista.lateral.tipo === tipo && vista.lateral.grupo === grupo;
   const { hora, h, dia } = partesHora(ahora, idioma, zona);
   const camaras = modelo.camaras || [];
   const enCamaras = vista.pestana === CAMARAS && camaras.length > 0;
@@ -1758,32 +1934,7 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
       cuerpo = `<div class="grande" data-grande="${esc(sel.entidad)}">${medio}${chip}<div class="piecam"><span><span class="n">${esc(sel.nombre)}</span><span class="l">${esc(sel.lugar)}</span></span><button class="cerrar vidrio" data-pantalla="1" aria-pressed="${vista.completa ? 'true' : 'false'}" aria-label="${esc(vista.completa ? T.salirPantalla : T.pantallaCompleta)}">${svg(vista.completa ? ICONOS.reducir : ICONOS.completa, 22)}</button></div></div>`;
       boton = `<button class="btn-cam vidrio" data-camaras-todas="1">${svg(ICONOS.rejilla, 18)}<span>${esc(T.verTodas)}</span></button>`;
     } else {
-      let enVivo = 0;
-      cuerpo = `<div class="rejilla">${camaras
-        .map((c) => {
-          const e = estados[c.entidad];
-          const ok = camaraEnLinea(e);
-          let medio;
-          let chip = '';
-          let abre = ok;
-          if (!ok) {
-            medio = nada(T.sinConexion, 32);
-            chip = `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
-          } else if (!sinFoto.has(c.entidad)) {
-            medio = `<img src="${esc(urlCamara(e, false, vista.tic || 0))}" alt="" loading="lazy" data-foto="${esc(c.entidad)}">`;
-          } else if (camaraConVideo(e) && !vista.sinReproductor) {
-            if (enVivo < MAX_VIVO) {
-              enVivo += 1;
-              medio = `<div class="vivo" data-vivo="${esc(c.entidad)}" data-ajuste="cover"></div>`;
-              chip = chipVivo;
-            } else medio = nada(T.tocaVivo, 32);
-          } else {
-            medio = nada(T.sinImagen, 32);
-            abre = false;
-          }
-          return `<button class="camara" data-camara="${esc(c.entidad)}" aria-label="${esc(T.abrirCamara(c.nombre))}"${abre ? '' : ' disabled'}>${medio}${chip}<span class="piecam"><span><span class="n">${esc(c.nombre)}</span><span class="l">${esc(c.lugar)}</span></span></span></button>`;
-        })
-        .join('')}</div>`;
+      cuerpo = `<div class="rejilla">${celdasCamaras(camaras, estados, idioma, vista)}</div>`;
     }
     centro = `<div class="cab-cams"><div><div class="sobre">${esc(sobre)}</div><div class="titulo cams">${esc(T.camaras)}</div></div>${boton}</div>${cuerpo}`;
   } else if (!cuartoSel) {
@@ -1798,13 +1949,14 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const saludo = h >= 5 && h < 12 ? T.dias : h >= 12 && h < 19 ? T.tardes : T.noches;
     const luces = todas.filter((f) => f.tipo === 'luz' && f.on).length;
     const chips = [];
-    const aire = todas.find((f) => f.tipo === 'clima' && f.disponible && num(f.estado?.actual) !== null);
-    if (aire) chips.push(htmlChip(ICONOS.termometro, T.interior, `${grados(aire.estado.actual)}°`));
-    // PANEL-06: el chip de audio va primero y abre el panel lateral con todas las bocinas de la casa.
+    // PANEL-07: el chip de aires (con la temperatura de adentro) sustituye al chip «Interior».
+    const aires = modelo.aires || [];
+    if (aires.length) chips.push(htmlChipAires(CASA, aires, estados, idioma, abierto('aire', CASA)));
+    // PANEL-06: el chip de audio abre el panel lateral con todas las bocinas de la casa.
     const bocinas = modelo.bocinas || [];
-    if (bocinas.length) chips.push(htmlChipAudio(CASA, bocinas, estados, idioma, vista.audio === CASA));
-    const camarasEnLinea = camaras.filter((c) => camaraEnLinea(estados[c.entidad])).length;
-    if (camaras.length) chips.push(htmlChip(ICONOS.camara, T.camaras, T.camarasChip(camarasEnLinea)));
+    if (bocinas.length) chips.push(htmlChipAudio(CASA, bocinas, estados, idioma, abierto('audio', CASA)));
+    // PANEL-07: el chip de cámaras abre el panel lateral con las cámaras.
+    if (camaras.length) chips.push(htmlChipCamaras(camaras, estados, idioma, abierto('camaras', CASA)));
     const persianas = todas.filter((f) => f.tipo === 'cortina' && f.disponible);
     if (persianas.length) {
       const ab = persianas.filter((f) => f.on).length;
@@ -1826,25 +1978,39 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const fichas = cuartoSel.dispositivos.map((d) => fichaDe(d, estados, idioma));
     const enc = encabezadoCuarto(fichas, estados, idioma);
     const bocinas = cuartoSel.bocinas || [];
-    const chip = bocinas.length ? `<div class="chips">${htmlChipAudio(cuartoSel.id, bocinas, estados, idioma, vista.audio === cuartoSel.id)}</div>` : '';
+    // PANEL-07: el chip de aires del cuarto (sus fichas siguen en la fila) y el de audio.
+    const aires = airesDe(cuartoSel);
+    const cs = [];
+    if (aires.length) cs.push(htmlChipAires(cuartoSel.id, aires, estados, idioma, abierto('aire', cuartoSel.id)));
+    if (bocinas.length) cs.push(htmlChipAudio(cuartoSel.id, bocinas, estados, idioma, abierto('audio', cuartoSel.id)));
+    const chip = cs.length ? `<div class="chips">${cs.join('')}</div>` : '';
     centro = `<div class="sobre">${esc(enc.sobre)}</div><div class="titulo">${esc(cuartoSel.nombre)}</div><div class="sub">${esc(enc.sub)}</div>${chip}`;
     const html = fichas.map((f) => htmlFicha(f, opc(f))).join('');
     const puntos = fichas.length > 6 ? '<div class="puntos der" aria-hidden="true"><span></span><span></span></div>' : '';
     if (fichas.length) abajo = `<div class="abajo"><div class="fila der" data-fila="${esc(cuartoSel.id)}">${html}</div>${puntos}</div>`;
   }
   const aviso = vista.aviso ? `<div class="aviso" role="status">${esc(vista.aviso)}</div>` : '';
-  // PANEL-06: el panel lateral de audio (solo en la pestaña de donde se abrió).
+  // PANEL-06/07: el panel lateral abierto (audio, aires o cámaras), solo en la pestaña de donde se abrió.
   let audio = '';
-  const grupo = grupoAudio(modelo, vista.audio);
-  if (grupo && !enCamaras && (vista.audio === CASA ? !cuartoSel : cuartoSel && cuartoSel.id === vista.audio)) {
-    audio = htmlLateralAudio(grupo.id === CASA ? T.audioCasa : T.audioDe(grupo.nombre), grupo.bocinas, estados, idioma, vista);
+  const grupo = grupoLateral(modelo, vista.lateral);
+  if (grupo && !enCamaras && (grupo.id === CASA ? !cuartoSel : cuartoSel && cuartoSel.id === grupo.id)) {
+    if (grupo.tipo === 'audio') {
+      audio = htmlLateral('audio', grupo.id === CASA ? T.audioCasa : T.audioDe(grupo.nombre), grupo.lista.map((d) => htmlBocina(d, estados, idioma, vista)).join(''), idioma);
+    } else if (grupo.tipo === 'aire') {
+      const lugarDe = (d) => (grupo.id === CASA ? (modelo.cuartos.find((c) => c.id !== OTROS && c.dispositivos.some((x) => x.entidad === d.entidad)) || {}).nombre || '' : '');
+      audio = htmlLateral('aire', grupo.id === CASA ? T.airesCasa : T.airesDe(grupo.nombre), grupo.lista.map((d) => htmlAire(d, estados, idioma, lugarDe(d))).join(''), idioma);
+    } else {
+      const n = grupo.lista.filter((c) => camaraEnLinea(estados[c.entidad])).length;
+      const pie = `<button class="btn-cam" data-ir-camaras="1">${svg(ICONOS.rejilla, 18)}<span>${esc(T.verTodas)}</span></button>`;
+      audio = htmlLateral('camaras', T.camarasLat(n), celdasCamaras(ordenPanelCamaras(grupo.lista, estados, vista), estados, idioma, vista), idioma, pie);
+    }
   }
   let ventana = '';
   if (vista.ventana) {
     const cuarto = modelo.cuartos.find((c) => [...c.dispositivos, ...(c.bocinas || [])].some((x) => x.entidad === vista.ventana));
     const d = cuarto
       ? [...cuarto.dispositivos, ...(cuarto.bocinas || [])].find((x) => x.entidad === vista.ventana)
-      : modelo.accesos.find((x) => x.entidad === vista.ventana) || (modelo.bocinas || []).find((x) => x.entidad === vista.ventana);
+      : modelo.accesos.find((x) => x.entidad === vista.ventana) || (modelo.bocinas || []).find((x) => x.entidad === vista.ventana) || (modelo.aires || []).find((x) => x.entidad === vista.ventana);
     if (d) ventana = htmlVentana(d, estados, idioma, vista, cuarto && cuarto.id !== OTROS ? cuarto.nombre : '');
   }
   return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
@@ -1865,12 +2031,26 @@ function salirDePantallaCompleta() {
   }
 }
 
-// PANEL-06: el grupo de bocinas de un chip (CASA = todas; si no, las del cuarto), o null si ya no hay.
+// PANEL-07: los aires de un cuarto (sus fichas de la fila que son aires).
+const airesDe = (c) => (c?.dispositivos || []).filter((d) => d.tipo === 'clima');
+
+// PANEL-06/07: lo que muestra un panel lateral { tipo: 'audio' | 'aire' | 'camaras', grupo: CASA o id del cuarto }:
+// las bocinas o los aires de la casa o del cuarto, o las cámaras (solo en Casa). null si ya no hay nada.
+function grupoLateral(modelo, lateral) {
+  if (!lateral || !modelo) return null;
+  const { tipo, grupo } = lateral;
+  const de = (lista, c) => (lista.length ? { tipo, id: c ? c.id : CASA, nombre: c ? c.nombre : '', lista } : null);
+  if (tipo === 'camaras') return grupo === CASA ? de(modelo.camaras || [], null) : null;
+  if (tipo !== 'audio' && tipo !== 'aire') return null;
+  if (grupo === CASA) return de((tipo === 'audio' ? modelo.bocinas : modelo.aires) || [], null);
+  const c = (modelo.cuartos || []).find((x) => x.id === grupo);
+  return c ? de(tipo === 'audio' ? c.bocinas || [] : airesDe(c), c) : null;
+}
+
+// PANEL-06: el grupo de bocinas de un chip de audio (CASA = todas; si no, las del cuarto), o null si ya no hay.
 function grupoAudio(modelo, id) {
-  if (!id || !modelo) return null;
-  if (id === CASA) return (modelo.bocinas || []).length ? { id: CASA, nombre: '', bocinas: modelo.bocinas } : null;
-  const c = (modelo.cuartos || []).find((x) => x.id === id);
-  return c && (c.bocinas || []).length ? { id: c.id, nombre: c.nombre, bocinas: c.bocinas } : null;
+  const g = grupoLateral(modelo, { tipo: 'audio', grupo: id });
+  return g ? { id: g.id, nombre: g.nombre, bocinas: g.lista } : null;
 }
 
 // ------------------------------------------------------------------ actualizar sin reemplazar
@@ -1889,7 +2069,7 @@ function morph(a, b) {
   if (a.hasAttribute && a.hasAttribute('data-vivo')) return;
   const ac = [...a.childNodes];
   const bc = [...b.childNodes];
-  const clave = (n) => (n.nodeType === 1 ? `${n.getAttribute('data-ficha')}|${n.getAttribute('data-bocina')}|${n.getAttribute('data-vivo')}` : '');
+  const clave = (n) => (n.nodeType === 1 ? `${n.getAttribute('data-ficha')}|${n.getAttribute('data-bocina')}|${n.getAttribute('data-clima')}|${n.getAttribute('data-vivo')}|${n.getAttribute('data-lateral')}` : '');
   bc.forEach((y, i) => {
     const x = ac[i];
     if (!x) a.appendChild(y);
@@ -1922,7 +2102,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._ventana = null;
       this._arrastre = null;
       this._camara = null;
-      this._audio = null; // PANEL-06: grupo del panel lateral de audio abierto (CASA o id del cuarto)
+      this._lateral = null; // PANEL-07: panel lateral abierto { tipo: 'audio' | 'aire' | 'camaras', grupo: CASA o id del cuarto }
       this._sinFoto = new Map(); // PANEL-06: cámara → hasta cuándo se trata como «sin foto»
       this._vivos = new Map(); // PANEL-06: cámara → su reproductor de Home Assistant (ha-camera-stream)
       this._reg = null;
@@ -1947,11 +2127,11 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       r.addEventListener('pointerup', () => this._soltar());
       r.addEventListener('pointercancel', () => this._soltar());
       r.addEventListener('contextmenu', (ev) => {
-        const b = ev.target.closest('[data-ficha], [data-bocina]');
+        const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima]');
         if (!b) return;
         ev.preventDefault();
-        if (b.dataset.bocina && ev.target.closest('button, input')) return;
-        if (this._abrirVentana(b.dataset.ficha || b.dataset.bocina)) this._suprimirClic = Date.now();
+        if ((b.dataset.bocina || b.dataset.clima) && ev.target.closest('button, input')) return;
+        if (this._abrirVentana(b.dataset.ficha || b.dataset.bocina || b.dataset.clima)) this._suprimirClic = Date.now();
       });
       // Barras: «input» mientras se arrastra, «change» al soltar (ahí se manda la orden).
       // La de la ventana es del aparato de la ventana; las del panel de audio dicen de qué bocina son.
@@ -1986,7 +2166,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         if (ev.key !== 'Escape') return;
         if (enPantallaCompleta(this.shadowRoot)) salirDePantallaCompleta();
         else if (this._ventana) this._cerrarVentana();
-        else if (this._audio) this._cerrarAudio();
+        else if (this._lateral) this._cerrarLateral();
       });
     }
 
@@ -2189,8 +2369,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       }
       if (this._arrastre && Date.now() > this._arrastre.hasta) this._arrastre = null;
       if (this._camara && !(this._modeloActual.camaras || []).some((c) => c.entidad === this._camara)) this._camara = null;
-      // PANEL-06: si el grupo de audio ya no tiene bocinas (les quitaron la etiqueta), el panel lateral se cierra.
-      if (this._audio && !grupoAudio(this._modeloActual, this._audio)) this._audio = null;
+      // PANEL-06/07: si el panel lateral ya no tiene nada (les quitaron la etiqueta), se cierra.
+      if (this._lateral && !grupoLateral(this._modeloActual, this._lateral)) this._lateral = null;
       const ahora = Date.now();
       for (const [ent, hasta] of this._sinFoto) if (hasta <= ahora) this._sinFoto.delete(ent);
       const T = TXT[idioma];
@@ -2211,7 +2391,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
               arrastre: this._arrastre,
               camara: this._camara,
               tic: Math.floor(Date.now() / 10000),
-              audio: this._audio,
+              lateral: this._lateral,
               sinFoto: new Set(this._sinFoto.keys()),
               sinReproductor: this._sinReproductor === true,
               completa: !!enPantallaCompleta(this.shadowRoot),
@@ -2287,7 +2467,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     _dispositivo(entidad) {
       const m = this._modeloActual;
       if (!m) return null;
-      return [...m.escenas, ...m.accesos, ...(m.bocinas || []), ...m.cuartos.flatMap((c) => [...c.dispositivos, ...(c.bocinas || [])])].find((x) => x.entidad === entidad) || null;
+      return [...m.escenas, ...m.accesos, ...(m.bocinas || []), ...(m.aires || []), ...m.cuartos.flatMap((c) => [...c.dispositivos, ...(c.bocinas || [])])].find((x) => x.entidad === entidad) || null;
     }
 
     _abrirVentana(entidad) {
@@ -2316,14 +2496,14 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     _presionar(ev) {
       if (ev.button > 0) return;
-      const b = ev.target.closest('[data-ficha], [data-bocina]');
+      const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima]');
       clearTimeout(this._lp);
       this._lp = null;
       if (!b || b.disabled) return;
-      // En la tarjeta de una bocina, los botones y la barra son suyos: mantenerlos no abre la ventana.
-      if (b.dataset.bocina && ev.target.closest('button, input')) return;
+      // En la tarjeta de una bocina o de un aire, los botones y la barra son suyos: mantenerlos no abre la ventana.
+      if ((b.dataset.bocina || b.dataset.clima) && ev.target.closest('button, input')) return;
       this._lpInicio = { x: ev.clientX, y: ev.clientY };
-      const entidad = b.dataset.ficha || b.dataset.bocina;
+      const entidad = b.dataset.ficha || b.dataset.bocina || b.dataset.clima;
       this._lp = setTimeout(() => {
         this._lp = null;
         // Un toque largo nunca prende ni apaga, tenga ventana o no.
@@ -2351,15 +2531,23 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._cerrarVentana();
         return;
       }
-      // PANEL-06: el panel lateral de audio.
-      if (ev.target.closest('[data-cerrar-audio]')) {
-        this._cerrarAudio();
+      // PANEL-06/07: los paneles laterales (audio, aires, cámaras). El mismo chip abre y cierra.
+      if (ev.target.closest('[data-cerrar-lateral]')) {
+        this._cerrarLateral();
         return;
       }
-      const chipAudio = ev.target.closest('[data-audio]');
-      if (chipAudio) {
-        if (this._audio === chipAudio.dataset.audio) this._cerrarAudio();
-        else this._abrirAudio(chipAudio.dataset.audio);
+      const chip = ev.target.closest('[data-audio], [data-aire], [data-camaras-chip]');
+      if (chip) {
+        const l = chip.dataset.audio ? { tipo: 'audio', grupo: chip.dataset.audio } : chip.dataset.aire ? { tipo: 'aire', grupo: chip.dataset.aire } : { tipo: 'camaras', grupo: CASA };
+        if (this._lateral && this._lateral.tipo === l.tipo && this._lateral.grupo === l.grupo) this._cerrarLateral();
+        else this._abrirLateral(l);
+        return;
+      }
+      // PANEL-07: desde el panel de cámaras se va a la pestaña Cámaras (una cámara en grande, o todas).
+      const irCam = ev.target.closest('.lateral [data-camara], [data-ir-camaras]');
+      if (irCam) {
+        if (irCam.disabled) return;
+        this._irACamaras(irCam.dataset.camara || null);
         return;
       }
       const ctl = ev.target.closest('button[data-control]');
@@ -2399,7 +2587,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       if (tab) {
         this._ventana = null;
         this._camara = null;
-        this._audio = null;
+        this._lateral = null;
         this._pestana = tab.dataset.tab;
         try {
           localStorage.setItem('vizions-panel-pestana', this._pestana);
@@ -2421,18 +2609,34 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       if (orden) this._enviar(d, orden);
     }
 
-    // PANEL-06: abre el panel lateral de audio de un grupo (CASA o un cuarto) y le pasa el foco.
-    _abrirAudio(grupo) {
-      if (!grupoAudio(this._modeloActual, grupo)) return;
-      this._audio = grupo;
+    // PANEL-06/07: abre un panel lateral { tipo, grupo } y le pasa el foco.
+    _abrirLateral(lateral) {
+      if (!grupoLateral(this._modeloActual, lateral)) return;
+      this._lateral = lateral;
+      this._ventana = null;
+      this._arrastre = null;
       this._render();
       const lat = this.shadowRoot.querySelector('.lateral');
       if (lat) lat.focus({ preventScroll: true });
     }
 
-    _cerrarAudio() {
-      this._audio = null;
+    _cerrarLateral() {
+      this._lateral = null;
       this._arrastre = null;
+      this._render();
+    }
+
+    // PANEL-07: a la pestaña Cámaras, con una cámara en grande (o la cuadrícula).
+    _irACamaras(camara) {
+      this._lateral = null;
+      this._ventana = null;
+      this._camara = camara;
+      this._pestana = CAMARAS;
+      try {
+        localStorage.setItem('vizions-panel-pestana', this._pestana);
+      } catch {
+        /* sin almacenamiento */
+      }
       this._render();
     }
 
@@ -2484,6 +2688,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, dibujar, enPantallaCompleta, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

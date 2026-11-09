@@ -1,6 +1,6 @@
-// Vizions Panel 0.7.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.8.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 5752b1c4ce1aacfd469becc102ed0692
+// Huella del contenido: 4546981af5bc3604ccc3241f959aec54
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -893,13 +893,21 @@ const __vp_tarjeta = (() => {
 //  · Automatizaciones (`automation.`) con la etiqueta del panel: botón que la corre en ese momento
 //    (automation.trigger). Solo en el panel del dueño: la TV del huésped no las toma.
 //
+// VIZIONS-PANEL-09 (0.8.0, aprobado el 9 nov 2026): cada aparato se ve con el ícono que le da Home
+// Assistant (el automático o el que se le ponga a mano en sus Ajustes, p. ej. mdi:chandelier), en las
+// fichas, los botones de escenas y las tarjetas de aire y bocina. Lo pinta el propio HA (ha-state-icon);
+// mientras carga, o si no está, se ve el ícono genérico de siempre.
+// También: abajo de la hora, la pila de la tablet (solo el ícono: nivel, rayo si carga, roja si baja).
+// Se lee de Kiosk Satellite (kioskSatellite.getDeviceInfo), Fully Kiosk (fully.getBatteryLevel) o del
+// navegador (navigator.getBattery, solo con https); si no hay de dónde, no aparece.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.7.0';
+const VERSION_PANEL = '0.8.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -997,6 +1005,7 @@ const TXT = {
     subir: 'Subir', detener: 'Detener', bajar: 'Bajar', posicion: 'Posición',
     bocinas: (n) => `${n} bocinas`, reproduciendoN: (n) => `${n} reproduciendo`, enPausa: 'en pausa', sinMusicaMin: 'sin música', sinConexionMin: 'sin conexión',
     audioCasa: 'Audio de la casa', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Abrir el audio', sinImagen: 'Sin imagen', tocaVivo: 'Toca para ver en vivo',
+    bateria: (n, c) => `Batería ${n} %${c ? ', cargando' : ''}`,
     todaLaCasa: 'Toda la casa', escenasSobre: (n) => (n === 1 ? '1 escena' : `${n} escenas`), luces2: 'Luces', lucesDe: (on, n) => (on === 0 ? 'Todas apagadas' : on === n ? 'Todas encendidas' : `${on} de ${n} encendidas`),
     persianasDe: (ab, n) => (ab === 0 ? 'Todas cerradas' : ab === n ? 'Todas abiertas' : `${ab} de ${n} ${ab === 1 ? 'abierta' : 'abiertas'}`),
     apagarTodas: 'Apagar todas', encenderTodas: 'Encender todas', abrirTodas: 'Abrir todas', cerrarTodas: 'Cerrar todas', favorito: 'Favorito',
@@ -1035,6 +1044,7 @@ const TXT = {
     subir: 'Up', detener: 'Stop', bajar: 'Down', posicion: 'Position',
     bocinas: (n) => `${n} speakers`, reproduciendoN: (n) => `${n} playing`, enPausa: 'paused', sinMusicaMin: 'no music', sinConexionMin: 'offline',
     audioCasa: 'Home audio', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Open audio', sinImagen: 'No image', tocaVivo: 'Tap to watch live',
+    bateria: (n, c) => `Battery ${n}%${c ? ', charging' : ''}`,
     todaLaCasa: 'Whole home', escenasSobre: (n) => (n === 1 ? '1 scene' : `${n} scenes`), luces2: 'Lights', lucesDe: (on, n) => (on === 0 ? 'All off' : on === n ? 'All on' : `${on} of ${n} on`),
     persianasDe: (ab, n) => (ab === 0 ? 'All closed' : ab === n ? 'All open' : `${ab} of ${n} open`),
     apagarTodas: 'Turn all off', encenderTodas: 'Turn all on', abrirTodas: 'Open all', cerrarTodas: 'Close all', favorito: 'Favorite',
@@ -1069,6 +1079,7 @@ const ICONOS = {
   reducir: 'M8 3v3a2 2 0 0 1-2 2H3 M21 8h-3a2 2 0 0 1-2-2V3 M3 16h3a2 2 0 0 1 2 2v3 M16 21v-3a2 2 0 0 1 2-2h3',
   encendido: 'M12 2v10 M18.4 6.6a9 9 0 1 1-12.77.04',
   estrella: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z',
+  rayo: 'M13 2 4 14h7l-1 8 9-12h-7l1-8Z',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -1481,7 +1492,15 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .der{padding-right:clamp(16px,4.4vw,56px)}
 .barra{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;flex:none}
 .marca{font-size:15px;font-weight:600;letter-spacing:0.24em;white-space:nowrap;text-transform:uppercase;max-width:40vw;overflow:hidden;text-overflow:ellipsis}
-.hora{font-size:22px;font-weight:500;margin-left:auto;order:3;font-variant-numeric:tabular-nums}
+.hora{font-size:22px;font-weight:500;margin-left:auto;order:3;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.bat{display:flex;align-items:center;gap:4px;color:rgba(255,255,255,0.78);line-height:0}
+.bat svg{stroke:currentColor;fill:currentColor}
+.bat .cel{position:relative;display:block;width:24px;height:12px;border:1.5px solid currentColor;border-radius:3px;box-sizing:border-box}
+.bat .cel::after{content:'';position:absolute;right:-4px;top:2.5px;width:2px;height:4px;border-radius:1px;background:currentColor}
+.bat .cel i{position:absolute;left:1.5px;top:1.5px;bottom:1.5px;border-radius:1px;background:currentColor}
+.bat.carga{color:#9FE1CB}
+.bat.carga .cel i{background:#5DCAA5}
+.bat.baja{color:#F09595}
 .tabs{order:2;margin:0 auto;display:flex;gap:2px;padding:6px;border-radius:30px;overflow-x:auto;max-width:100%;scrollbar-width:none}
 .tabs::-webkit-scrollbar,.fila::-webkit-scrollbar{display:none}
 .tab{flex:none;white-space:nowrap;height:44px;padding:0 16px;border-radius:22px;border:0;cursor:pointer;font-size:15px;font-weight:500;background:transparent;color:rgba(255,255,255,0.84)}
@@ -1659,6 +1678,10 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .lateral .piecam .n{font-size:16px}
 .lateral .piecam .l{font-size:13px}
 .lateral .btn-cam{flex:none;justify-content:center;background:#1D262B;border:0}
+.ic{display:inline-flex;align-items:center;justify-content:center;flex:none;line-height:0;--icon-primary-color:currentColor}
+.ic ha-state-icon{display:flex;color:inherit}
+.ficha .ic,.escena .ic{color:rgba(255,255,255,0.85)}
+.ficha.on .ic{color:var(--vp-tinte)}
 .grupo{flex:none;width:calc(clamp(150px,15vw,190px) * 2 + 14px);height:clamp(124px,12vw,150px);padding:16px 16px 14px;border-radius:22px;cursor:pointer;color:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;transition:background-color .2s,border-color .2s}
 .g-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;min-width:0}
 .g-tx{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -1722,6 +1745,26 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 
 // ------------------------------------------------------------------ dibujo (texto HTML; todo lo de HA va escapado)
 
+// PANEL-09: la pila de la tablet → { nivel 0–100, cargando } (o null si el dato no sirve).
+// Kiosk Satellite no documenta si da 0–1 o 0–100: hasta 1 se toma como fracción.
+function normalizarBateria(nivel, cargando) {
+  let n = typeof nivel === 'string' ? Number(nivel.replace('%', '').trim()) : nivel;
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return null;
+  if (n <= 1) n *= 100;
+  return { nivel: Math.max(0, Math.min(100, Math.round(n))), cargando: cargando === true || cargando === 'true' || cargando === 1 };
+}
+
+// PANEL-09: el ícono de la pila (sin número; el porcentaje va en la etiqueta para lectores de pantalla).
+function htmlBateria(b, idioma) {
+  if (!b) return '';
+  const T = TXT[idioma];
+  const baja = !b.cargando && b.nivel <= 20;
+  return `<span class="bat${b.cargando ? ' carga' : ''}${baja ? ' baja' : ''}" role="img" aria-label="${esc(T.bateria(b.nivel, b.cargando))}" data-nivel="${b.nivel}">${b.cargando ? svg(ICONOS.rayo, 14) : ''}<span class="cel"><i style="width:calc((100% - 3px) * ${b.nivel / 100})"></i></span></span>`;
+}
+
+// PANEL-09: el lugar del ícono de un aparato. La tarjeta le pone adentro el ícono de HA (ha-state-icon);
+// el genérico queda mientras tanto (y si HA no lo tiene).
+const icono = (entidad, generico, tam = 30) => `<span class="ic" data-icono="${esc(entidad)}" style="--mdc-icon-size:${tam}px;width:${tam}px;height:${tam}px">${svg(generico, tam)}</span>`;
 const svg = (d, tam = 30) => `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24" fill="none" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${esc(d)}"></path></svg>`;
 
 function htmlFicha(f, { espera = false, activada = false, idioma = 'es', favorito = false } = {}) {
@@ -1735,7 +1778,7 @@ function htmlFicha(f, { espera = false, activada = false, idioma = 'es', favorit
   const barra = f.pct !== null && f.pct !== undefined ? `<span class="barrita"><i style="width:${Math.max(0, Math.min(100, Math.round(f.pct)))}%"></i></span>` : '';
   const desactivada = !f.disponible || !f.accion ? ' disabled' : '';
   const presion = f.tipo === 'escena' ? '' : ` aria-pressed="${f.on ? 'true' : 'false'}"`;
-  return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${presion}${desactivada}><span class="cab"><span class="nom">${esc(f.nombre)}</span>${favorito ? `<span class="cab-ic">${svg(ICONOS.estrella, 14)}${svg(f.icono)}</span>` : svg(f.icono)}</span><span class="pie"><span class="est">${esc(sub)}</span>${barra}</span></button>`;
+  return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${presion}${desactivada}><span class="cab"><span class="nom">${esc(f.nombre)}</span>${favorito ? `<span class="cab-ic">${svg(ICONOS.estrella, 14)}${icono(f.entidad, f.icono)}</span>` : icono(f.entidad, f.icono)}</span><span class="pie"><span class="est">${esc(sub)}</span>${barra}</span></button>`;
 }
 
 function htmlEscena(f, { espera = false, activada = false, idioma = 'es' } = {}) {
@@ -1745,7 +1788,7 @@ function htmlEscena(f, { espera = false, activada = false, idioma = 'es' } = {})
   if (!f.disponible) clases.push('nodisp');
   if (espera) clases.push('espera');
   const desactivada = !f.disponible || !f.accion ? ' disabled' : '';
-  return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${desactivada}>${svg(f.icono, 24)}<span class="tx"><span class="nom">${esc(f.nombre)}</span><span class="est">${esc(activada ? T.activada : f.sub)}</span></span></button>`;
+  return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${desactivada}>${icono(f.entidad, f.icono, 24)}<span class="tx"><span class="nom">${esc(f.nombre)}</span><span class="est">${esc(activada ? T.activada : f.sub)}</span></span></button>`;
 }
 
 // La ventana de un dispositivo. `vista.arrastre` = lo que el dedo está moviendo en una barra.
@@ -1877,7 +1920,7 @@ function htmlBocina(d, estados, idioma, vista) {
   const desl = `<div class="desl"><i style="width:${c?.volumen ? v : 0}%"></i><input type="range" min="0" max="100" step="1" value="${c?.volumen ? v : 0}" data-control="volumen" data-entidad="${ent}" aria-label="${esc(T.volumen)}"${c?.volumen ? '' : ' disabled'}></div>`;
   const numTxt = c?.volumen && (arr || real !== null) ? `${silencio && !arr ? 0 : v}` : '–';
   const vol = `<div class="boc-vol">${mute}${desl}<span class="boc-num">${esc(numTxt)}</span></div>`;
-  return `<div class="${clases.join(' ')}" data-bocina="${ent}"><div class="boc-cab"><span class="boc-ic">${svg(ICONOS.bocina, 22)}</span><span class="boc-tx"><span class="boc-nom">${esc(f.nombre)}</span><span class="boc-sub">${esc(sub)}</span></span></div>${ctl}${vol}</div>`;
+  return `<div class="${clases.join(' ')}" data-bocina="${ent}"><div class="boc-cab"><span class="boc-ic">${icono(d.entidad, ICONOS.bocina, 22)}</span><span class="boc-tx"><span class="boc-nom">${esc(f.nombre)}</span><span class="boc-sub">${esc(sub)}</span></span></div>${ctl}${vol}</div>`;
 }
 
 // PANEL-07: un panel lateral (audio, aires o cámaras). `cuerpo` va en la lista que se desliza; `pie` abajo.
@@ -2027,7 +2070,7 @@ function htmlAire(d, estados, idioma, lugar) {
   if (prendido && c && c.modos.length) {
     cuerpo += `<div class="clm-modos">${c.modos.map((m) => `<button class="clm-modo${e.state === m ? ' sel' : ''}" data-control="modo" data-valor="${esc(m)}" data-entidad="${ent}" aria-pressed="${e.state === m ? 'true' : 'false'}">${esc(T.modos[m] || bonito(m))}</button>`).join('')}</div>`;
   }
-  return `<div class="${clases.join(' ')}" data-clima="${ent}"><div class="clm-cab"><span class="clm-ic">${svg(ICONOS.clima, 22)}</span><span class="clm-tx"><span class="clm-nom">${esc(f.nombre)}</span><span class="clm-sub">${esc(sub)}</span></span>${onoff}</div>${cuerpo}</div>`;
+  return `<div class="${clases.join(' ')}" data-clima="${ent}"><div class="clm-cab"><span class="clm-ic">${icono(d.entidad, ICONOS.clima, 22)}</span><span class="clm-tx"><span class="clm-nom">${esc(f.nombre)}</span><span class="clm-sub">${esc(sub)}</span></span>${onoff}</div>${cuerpo}</div>`;
 }
 
 // ------------------------------------------------------------------ PANEL-07: cámaras (chip de Casa + panel lateral)
@@ -2268,7 +2311,7 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
       : modelo.accesos.find((x) => x.entidad === vista.ventana) || (modelo.bocinas || []).find((x) => x.entidad === vista.ventana) || (modelo.aires || []).find((x) => x.entidad === vista.ventana) || (modelo.persianas || []).find((x) => x.entidad === vista.ventana);
     if (d) ventana = htmlVentana(d, estados, idioma, vista, cuarto && cuarto.id !== OTROS ? cuarto.nombre : '');
   }
-  return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
+  return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}${htmlBateria(vista.bateria, idioma)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
 }
 
 // PANEL-06b: ¿la cámara grande de esta tarjeta está en pantalla completa? (dentro de la sombra)
@@ -2329,6 +2372,8 @@ function morph(a, b) {
   if ('disabled' in a && a.disabled !== b.hasAttribute('disabled')) a.disabled = b.hasAttribute('disabled');
   // PANEL-06: lo de adentro de un espacio de video lo maneja la tarjeta (el reproductor de HA); no se toca.
   if (a.hasAttribute && a.hasAttribute('data-vivo')) return;
+  // PANEL-09: el ícono de HA que ya está puesto en su lugar se queda (la tarjeta le pasa el estado nuevo).
+  if (a.hasAttribute && a.hasAttribute('data-icono') && a.firstElementChild && a.firstElementChild.localName === 'ha-state-icon') return;
   const ac = [...a.childNodes];
   const bc = [...b.childNodes];
   const clave = (n) => (n.nodeType === 1 ? `${n.getAttribute('data-ficha')}|${n.getAttribute('data-bocina')}|${n.getAttribute('data-clima')}|${n.getAttribute('data-tarjeta')}|${n.getAttribute('data-grupo')}|${n.getAttribute('data-vivo')}|${n.getAttribute('data-lateral')}` : '');
@@ -2489,6 +2534,9 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     connectedCallback() {
       // Cada 5 s: el reloj y, en la pestaña Cámaras, la imagen nueva de cada cámara (cambia cada 10 s).
       this._reloj = setInterval(() => this._render(), 5000);
+      // PANEL-09: la pila de la tablet, al conectar y cada minuto.
+      this._leerBateria();
+      this._tBateria = setInterval(() => this._leerBateria(), 60000);
       document.addEventListener('fullscreenchange', this._alPantalla);
       if (this._hass && !this._conectado) this._conectar();
       this._kiosko();
@@ -2498,6 +2546,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     disconnectedCallback() {
       clearInterval(this._reloj);
+      clearInterval(this._tBateria);
       document.removeEventListener('fullscreenchange', this._alPantalla);
       this._vivos.clear();
       clearTimeout(this._tRecarga);
@@ -2665,6 +2714,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
               sinFoto: new Set(this._sinFoto.keys()),
               sinReproductor: this._sinReproductor === true,
               completa: !!enPantallaCompleta(this.shadowRoot),
+              bateria: this._bateria || null,
             },
           })
         : `<div class="raiz"><div class="velo"></div><div class="capa der"><div class="sobre">${this._errorReg ? esc(T.errorRegistro) : ''}</div></div></div>`;
@@ -2677,6 +2727,81 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._html = html;
       }
       this._montarVivos();
+      this._montarIconos();
+    }
+
+    // PANEL-09: lee la pila de la tablet de donde se pueda; si no hay de dónde, no se muestra.
+    async _leerBateria() {
+      let b = null;
+      try {
+        const ks = window.kioskSatellite;
+        const fk = window.fully;
+        if (ks && typeof ks.getDeviceInfo === 'function') {
+          const i = await ks.getDeviceInfo();
+          if (i) b = normalizarBateria(i.battery, i.charging);
+        } else if (fk && typeof fk.getBatteryLevel === 'function') {
+          b = normalizarBateria(fk.getBatteryLevel(), typeof fk.isPlugged === 'function' ? fk.isPlugged() : false);
+        } else if (typeof navigator !== 'undefined' && typeof navigator.getBattery === 'function') {
+          const m = await navigator.getBattery();
+          if (m) {
+            b = normalizarBateria(m.level, m.charging);
+            if (!this._pilaEscucha) {
+              this._pilaEscucha = true;
+              const otra = () => this._leerBateria();
+              m.addEventListener('levelchange', otra);
+              m.addEventListener('chargingchange', otra);
+            }
+          }
+        }
+      } catch {
+        b = null; // sin permiso (http) o sin dato: no se muestra
+      }
+      const antes = this._bateria;
+      this._bateria = b;
+      if (JSON.stringify(antes || null) !== JSON.stringify(b)) this._render();
+    }
+
+    // PANEL-09: en cada lugar [data-icono] pone el ícono de HA (ha-state-icon) con el estado de su aparato.
+    _montarIconos() {
+      const lugares = this.shadowRoot ? [...this.shadowRoot.querySelectorAll('[data-icono]')] : [];
+      if (!lugares.length || !this._hass || this._sinIconos) return;
+      if (!customElements.get('ha-state-icon')) {
+        this._cargarIconos();
+        return;
+      }
+      for (const l of lugares) {
+        const estado = this._hass.states[l.dataset.icono];
+        if (!estado) continue;
+        let el = l.firstElementChild;
+        if (!el || el.localName !== 'ha-state-icon') {
+          el = document.createElement('ha-state-icon');
+          l.replaceChildren(el);
+        }
+        if (el.hass !== this._hass) el.hass = this._hass;
+        if (el.stateObj !== estado) el.stateObj = estado;
+      }
+    }
+
+    // PANEL-09: ha-state-icon es de HA, pero se carga cuando alguna tarjeta lo usa. Se le pide a HA una
+    // tarjeta «tile» (sin mostrarla) para que lo cargue; si en 10 s no aparece, se quedan los genéricos.
+    _cargarIconos() {
+      if (this._cargandoIconos || this._sinIconos) return;
+      const ent = this.shadowRoot.querySelector('[data-icono]')?.dataset.icono;
+      this._cargandoIconos = (async () => {
+        try {
+          const ayudas = typeof window.loadCardHelpers === 'function' ? await window.loadCardHelpers() : null;
+          if (ayudas && ayudas.createCardElement && ent) {
+            const t = ayudas.createCardElement({ type: 'tile', entity: ent });
+            if (t) t.hass = this._hass;
+          }
+        } catch (e) {
+          console.warn('[vizions-panel] iconos', e);
+        }
+        const listo = await Promise.race([customElements.whenDefined('ha-state-icon').then(() => true), new Promise((r) => setTimeout(() => r(false), 10000))]);
+        this._cargandoIconos = null;
+        if (!listo) this._sinIconos = true;
+        else this._montarIconos();
+      })();
     }
 
     // PANEL-06: pone el reproductor de video de Home Assistant en cada espacio [data-vivo] y le pasa
@@ -3026,6 +3151,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, normalizarBateria, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

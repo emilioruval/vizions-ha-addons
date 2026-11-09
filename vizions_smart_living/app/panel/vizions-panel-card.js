@@ -1,6 +1,6 @@
-// Vizions Panel 0.8.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.9.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 4546981af5bc3604ccc3241f959aec54
+// Huella del contenido: 39761f294e2dea101b3b503998a3a0bf
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -901,13 +901,19 @@ const __vp_tarjeta = (() => {
 // Se lee de Kiosk Satellite (kioskSatellite.getDeviceInfo), Fully Kiosk (fully.getBatteryLevel) o del
 // navegador (navigator.getBattery, solo con https); si no hay de dónde, no aparece.
 //
+// VIZIONS-PANEL-10 (0.9.0, aprobado el 9 nov 2026): una tablet por cuarto. Con `?cuarto=` en la dirección
+// (nombre del área, sin importar mayúsculas ni acentos, o su id) — o `cuarto:` en la configuración de la
+// tarjeta — el panel abre en ese cuarto al cargar, y si alguien lo deja en otra pestaña (o con un panel o
+// ventana abiertos) regresa solo a los 5 min sin tocar la pantalla (no si hay una cámara en pantalla
+// completa). Sin `?cuarto=`, todo igual que antes.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.8.0';
+const VERSION_PANEL = '0.9.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -1745,6 +1751,17 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 
 // ------------------------------------------------------------------ dibujo (texto HTML; todo lo de HA va escapado)
 
+// PANEL-10: el cuarto de esta tablet (`?cuarto=` o `cuarto:`) → id del cuarto, o null si no existe.
+// Vale el id del área o su nombre (sin importar mayúsculas, acentos ni espacios de más).
+const VOLVER_MS = 5 * 60 * 1000;
+function cuartoDeParametro(modelo, valor) {
+  const norm = (x) => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const v = norm(valor);
+  if (!v || !modelo) return null;
+  const c = (modelo.cuartos || []).find((x) => x.id !== OTROS && (norm(x.id) === v || norm(x.nombre) === v));
+  return c ? c.id : null;
+}
+
 // PANEL-09: la pila de la tablet → { nivel 0–100, cargando } (o null si el dato no sirve).
 // Kiosk Satellite no documenta si da 0–1 o 0–100: hasta 1 se toma como fracción.
 function normalizarBateria(nivel, cargando) {
@@ -2424,6 +2441,20 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       } catch {
         this._pestana = null;
       }
+      // PANEL-10: el cuarto de esta tablet (?cuarto= en la dirección) y cuándo se tocó la pantalla por última vez.
+      this._cuartoPedido = null;
+      try {
+        this._cuartoPedido = new URLSearchParams(window.location.search).get('cuarto');
+      } catch {
+        this._cuartoPedido = null;
+      }
+      this._cuartoAplicado = false;
+      this._volverMs = VOLVER_MS;
+      this._ultimoToque = Date.now();
+      const toque = () => {
+        this._ultimoToque = Date.now();
+      };
+      for (const t of ['pointerdown', 'touchstart', 'keydown', 'wheel']) this.addEventListener(t, toque, { passive: true, capture: true });
       this.attachShadow({ mode: 'open' });
       this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="vp"></div>`;
       const r = this.shadowRoot;
@@ -2502,6 +2533,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         marca: typeof cfg.marca === 'string' ? cfg.marca.trim() : '',
         fondo: urlSegura(cfg.fondo) || '',
         kiosko: cfg.kiosko === false ? false : true,
+        cuarto: typeof cfg.cuarto === 'string' && cfg.cuarto.trim() ? cfg.cuarto.trim() : '',
       };
       this._kiosko();
       this._render();
@@ -2533,7 +2565,10 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     connectedCallback() {
       // Cada 5 s: el reloj y, en la pestaña Cámaras, la imagen nueva de cada cámara (cambia cada 10 s).
-      this._reloj = setInterval(() => this._render(), 5000);
+      this._reloj = setInterval(() => {
+        this._volverAlCuarto();
+        this._render();
+      }, 5000);
       // PANEL-09: la pila de la tablet, al conectar y cada minuto.
       this._leerBateria();
       this._tBateria = setInterval(() => this._leerBateria(), 60000);
@@ -2681,6 +2716,12 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       const idioma = idiomaDe(this._hass);
       if (this._activada && Date.now() > this._activada.hasta) this._activada = null;
       this._modeloActual = this._modelo(idioma);
+      // PANEL-10: al cargar, la pestaña del cuarto de esta tablet (una sola vez, cuando ya hay cuartos).
+      if (!this._cuartoAplicado && this._cuartoDeTablet() !== undefined && (this._modeloActual.cuartos || []).length) {
+        const id = cuartoDeParametro(this._modeloActual, this._cuartoDeTablet());
+        if (id) this._pestana = id;
+        this._cuartoAplicado = true;
+      }
       // Si lo de la ventana ya no está (le quitaron la etiqueta) o ya no se puede ajustar, se cierra.
       if (this._ventana) {
         const d = this._dispositivo(this._ventana);
@@ -2728,6 +2769,32 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       }
       this._montarVivos();
       this._montarIconos();
+    }
+
+    // PANEL-10: lo pedido en la dirección manda sobre la configuración; undefined si no hay ninguno.
+    _cuartoDeTablet() {
+      return this._cuartoPedido || (this._cfg && this._cfg.cuarto) || undefined;
+    }
+
+    // PANEL-10: tras VOLVER_MS sin tocar la pantalla, de vuelta al cuarto de la tablet (todo cerrado).
+    _volverAlCuarto() {
+      const pedido = this._cuartoDeTablet();
+      if (!pedido || !this._modeloActual) return;
+      const id = cuartoDeParametro(this._modeloActual, pedido);
+      if (!id || Date.now() - this._ultimoToque < this._volverMs) return;
+      if (enPantallaCompleta(this.shadowRoot)) return;
+      if (this._pestana === id && !this._lateral && !this._ventana && !this._camara) return;
+      this._pestana = id;
+      this._lateral = null;
+      this._ventana = null;
+      this._camara = null;
+      this._arrastre = null;
+      try {
+        localStorage.setItem('vizions-panel-pestana', this._pestana);
+      } catch {
+        /* sin almacenamiento */
+      }
+      this._render();
     }
 
     // PANEL-09: lee la pila de la tablet de donde se pueda; si no hay de dónde, no se muestra.
@@ -3151,6 +3218,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, normalizarBateria, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

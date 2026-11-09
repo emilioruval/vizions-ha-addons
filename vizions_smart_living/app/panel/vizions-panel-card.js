@@ -1,6 +1,6 @@
-// Vizions Panel 0.6.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.7.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 5aeee164057e2481d4a1b1a74cb38e12
+// Huella del contenido: 5752b1c4ce1aacfd469becc102ed0692
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -881,20 +881,34 @@ const __vp_tarjeta = (() => {
 //    la abre en grande en la pestaña Cámaras; «Ver todas» lleva a la cuadrícula.
 //  · Un solo panel lateral a la vez (audio, aires o cámaras).
 //
+// VIZIONS-PANEL-08 (0.7.0, mockups aprobados el 9 nov 2026):
+//  · Cuartos: con 2 o más luces (`light.`), una tarjeta ancha «Luces» las junta (cuántas encendidas, una
+//    barrita por luz y un botón para apagar/encender todas); con 2 o más persianas, una tarjeta «Persianas»
+//    (▲ ▼ para todas). Tocar la tarjeta abre el panel lateral con cada una. Los apagadores/enchufes
+//    (`switch.`) siguen sueltos. Etiqueta nueva «Vizions Panel Favorito»: esa luz o persiana sale también
+//    suelta en la fila (con estrella).
+//  · Casa: el chip de Persianas se toca (panel con todas las persianas de la casa) y hay chip «Escenas»
+//    (panel con los botones y «Ver todas»). La fila de escenas de abajo se quitó.
+//  · Pestaña «Escenas» (si hay): botones agrupados por cuarto (área de HA) y «Toda la casa».
+//  · Automatizaciones (`automation.`) con la etiqueta del panel: botón que la corre en ese momento
+//    (automation.trigger). Solo en el panel del dueño: la TV del huésped no las toma.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.6.0';
+const VERSION_PANEL = '0.7.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
+const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
 const OTROS = '__otros__';
 const ORDEN_TIPOS = ['luz', 'cortina', 'clima', 'bocina', 'escena'];
 const CASA = '__casa__';
 const CAMARAS = '__camaras__';
+const ESCENAS = '__escenas__';
 // PANEL-06: cuántas cámaras sin foto se ven en vivo a la vez en la cuadrícula, y cuánto dura la marca «sin foto».
 const MAX_VIVO = 4;
 const SIN_FOTO_MS = 10 * 60 * 1000;
@@ -955,7 +969,7 @@ function raicesKiosko(tarjeta) {
 
 const TXT = {
   es: {
-    casa: 'Casa', otros: 'Otros', escenas: 'Escenas', escena: 'Escena', activada: 'Activada',
+    casa: 'Casa', otros: 'Otros', escenas: 'Escenas', escena: 'Escena', automatizacion: 'Automatización', activada: 'Activada',
     luces: (n) => (n === 1 ? '1 luz encendida' : `${n} luces encendidas`),
     deLuces: (a, b) => (b === 1 ? `${a} de 1 luz encendida` : `${a} de ${b} luces encendidas`),
     dias: 'Buenos días', tardes: 'Buenas tardes', noches: 'Buenas noches',
@@ -983,12 +997,17 @@ const TXT = {
     subir: 'Subir', detener: 'Detener', bajar: 'Bajar', posicion: 'Posición',
     bocinas: (n) => `${n} bocinas`, reproduciendoN: (n) => `${n} reproduciendo`, enPausa: 'en pausa', sinMusicaMin: 'sin música', sinConexionMin: 'sin conexión',
     audioCasa: 'Audio de la casa', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Abrir el audio', sinImagen: 'Sin imagen', tocaVivo: 'Toca para ver en vivo',
+    todaLaCasa: 'Toda la casa', escenasSobre: (n) => (n === 1 ? '1 escena' : `${n} escenas`), luces2: 'Luces', lucesDe: (on, n) => (on === 0 ? 'Todas apagadas' : on === n ? 'Todas encendidas' : `${on} de ${n} encendidas`),
+    persianasDe: (ab, n) => (ab === 0 ? 'Todas cerradas' : ab === n ? 'Todas abiertas' : `${ab} de ${n} ${ab === 1 ? 'abierta' : 'abiertas'}`),
+    apagarTodas: 'Apagar todas', encenderTodas: 'Encender todas', abrirTodas: 'Abrir todas', cerrarTodas: 'Cerrar todas', favorito: 'Favorito',
+    lucesDeCuarto: (c) => `Luces · ${c}`, persianasCasa: 'Persianas de la casa', persianasDeCuarto: (c) => `Persianas · ${c}`,
+    abrirLuces: 'Abrir las luces', abrirPersianas: 'Abrir las persianas', abrirEscenas: 'Abrir las escenas', escenasN: (n) => `${n}`,
     aires: (n) => `${n} aires`, encendidosN: (n) => (n === 1 ? '1 encendido' : `${n} encendidos`), apagadosMin: 'apagados', adentro: (t) => `${t}° adentro`,
     airesCasa: 'Aires de la casa', airesDe: (c) => `Aires · ${c}`, abrirAires: 'Abrir los aires', abrirCamaras: 'Abrir las cámaras', camarasLat: (n) => `Cámaras · ${n} en línea`,
     clima: { 'clear-night': 'DESPEJADO', cloudy: 'NUBLADO', exceptional: 'EXCEPCIONAL', fog: 'NIEBLA', hail: 'GRANIZO', lightning: 'TORMENTA', 'lightning-rainy': 'TORMENTA', partlycloudy: 'PARCIALMENTE NUBLADO', pouring: 'AGUACERO', rainy: 'LLUVIA', snowy: 'NIEVE', 'snowy-rainy': 'AGUANIEVE', sunny: 'SOLEADO', windy: 'VIENTO', 'windy-variant': 'VIENTO' },
   },
   en: {
-    casa: 'Home', otros: 'Other', escenas: 'Scenes', escena: 'Scene', activada: 'Activated',
+    casa: 'Home', otros: 'Other', escenas: 'Scenes', escena: 'Scene', automatizacion: 'Automation', activada: 'Activated',
     luces: (n) => (n === 1 ? '1 light on' : `${n} lights on`),
     deLuces: (a, b) => (b === 1 ? `${a} of 1 light on` : `${a} of ${b} lights on`),
     dias: 'Good morning', tardes: 'Good afternoon', noches: 'Good evening',
@@ -1016,6 +1035,11 @@ const TXT = {
     subir: 'Up', detener: 'Stop', bajar: 'Down', posicion: 'Position',
     bocinas: (n) => `${n} speakers`, reproduciendoN: (n) => `${n} playing`, enPausa: 'paused', sinMusicaMin: 'no music', sinConexionMin: 'offline',
     audioCasa: 'Home audio', audioDe: (c) => `Audio · ${c}`, abrirAudio: 'Open audio', sinImagen: 'No image', tocaVivo: 'Tap to watch live',
+    todaLaCasa: 'Whole home', escenasSobre: (n) => (n === 1 ? '1 scene' : `${n} scenes`), luces2: 'Lights', lucesDe: (on, n) => (on === 0 ? 'All off' : on === n ? 'All on' : `${on} of ${n} on`),
+    persianasDe: (ab, n) => (ab === 0 ? 'All closed' : ab === n ? 'All open' : `${ab} of ${n} open`),
+    apagarTodas: 'Turn all off', encenderTodas: 'Turn all on', abrirTodas: 'Open all', cerrarTodas: 'Close all', favorito: 'Favorite',
+    lucesDeCuarto: (c) => `Lights · ${c}`, persianasCasa: 'Home blinds', persianasDeCuarto: (c) => `Blinds · ${c}`,
+    abrirLuces: 'Open lights', abrirPersianas: 'Open blinds', abrirEscenas: 'Open scenes', escenasN: (n) => `${n}`,
     aires: (n) => `${n} A/C units`, encendidosN: (n) => `${n} on`, apagadosMin: 'off', adentro: (t) => `${t}° inside`,
     airesCasa: 'Home A/C', airesDe: (c) => `A/C · ${c}`, abrirAires: 'Open A/C', abrirCamaras: 'Open cameras', camarasLat: (n) => `Cameras · ${n} online`,
     clima: { 'clear-night': 'CLEAR', cloudy: 'CLOUDY', exceptional: 'EXCEPTIONAL', fog: 'FOG', hail: 'HAIL', lightning: 'STORM', 'lightning-rainy': 'STORM', partlycloudy: 'PARTLY CLOUDY', pouring: 'POURING', rainy: 'RAIN', snowy: 'SNOW', 'snowy-rainy': 'SLEET', sunny: 'SUNNY', windy: 'WINDY', 'windy-variant': 'WINDY' },
@@ -1044,6 +1068,7 @@ const ICONOS = {
   rejilla: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z', completa: 'M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3',
   reducir: 'M8 3v3a2 2 0 0 1-2 2H3 M21 8h-3a2 2 0 0 1-2-2V3 M3 16h3a2 2 0 0 1 2 2v3 M16 21v-3a2 2 0 0 1 2-2h3',
   encendido: 'M12 2v10 M18.4 6.6a9 9 0 1 1-12.77.04',
+  estrella: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -1122,12 +1147,32 @@ const camaraConVideo = (estado) => (Number(estado?.attributes?.supported_feature
 
 // ------------------------------------------------------------------ modelo (sin DOM: se prueba en Node)
 
+// PANEL-08: las automatizaciones con una etiqueta, como «escenas» del panel (un botón que la corre).
+// Solo el panel: src/descubrir.mjs (la TV del huésped) no conoce `automation.`.
+function rutinasEtiquetadas({ etiquetas = [], entidades = [], estados = [] }, nombreEtiqueta, idioma = 'es') {
+  const norm = (x) => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const objetivo = norm(nombreEtiqueta);
+  const marcas = new Set(objetivo ? etiquetas.filter((l) => norm(l.name) === objetivo).map((l) => l.label_id) : []);
+  if (!marcas.size) return [];
+  const amigable = new Map(estados.map((x) => [x.entity_id, x.attributes?.friendly_name]));
+  return entidades
+    .filter((e) => typeof e?.entity_id === 'string' && /^automation\.[a-z0-9_]+$/.test(e.entity_id) && !e.disabled_by && (e.labels || []).some((l) => marcas.has(l)))
+    .sort((a, b) => (a.entity_id < b.entity_id ? -1 : 1))
+    .map((e) => {
+      const es = String(amigable.get(e.entity_id) || e.name || e.original_name || e.entity_id.split('.')[1].replace(/_/g, ' ')).trim();
+      return { id: `rutina-${e.entity_id.split('.')[1].replace(/_+/g, '-')}`, tipo: 'escena', entidad: e.entity_id, nombre: { es, en: traducirNombre(es, { tipo: 'escena' }) || es } };
+    });
+}
+
 // Registros de Home Assistant + estados → cuartos con sus dispositivos, y escenas.
-function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas = [], estados = {}, etiqueta = ETIQUETA_PANEL, etiquetaInicio = ETIQUETA_INICIO, idioma = 'es' }) {
+function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas = [], estados = {}, etiqueta = ETIQUETA_PANEL, etiquetaInicio = ETIQUETA_INICIO, etiquetaFavorito = ETIQUETA_FAVORITO, idioma = 'es' }) {
   const registro = { etiquetas, dispositivos, entidades, estados: Object.values(estados) };
-  const lista = dispositivosEtiquetados(registro, etiqueta).dispositivos;
+  // PANEL-08: las automatizaciones con la etiqueta del panel van como escenas (botón que la corre).
+  const lista = [...dispositivosEtiquetados(registro, etiqueta).dispositivos, ...rutinasEtiquetadas(registro, etiqueta, idioma)];
   // Accesos rápidos de Casa: lo que tenga la etiqueta de inicio (con o sin la del panel).
-  const deInicio = etiquetaInicio ? dispositivosEtiquetados(registro, etiquetaInicio).dispositivos : [];
+  const deInicio = etiquetaInicio ? [...dispositivosEtiquetados(registro, etiquetaInicio).dispositivos, ...rutinasEtiquetadas(registro, etiquetaInicio, idioma)] : [];
+  // PANEL-08: las luces y persianas con la etiqueta de favoritos salen también sueltas en la fila del cuarto.
+  const favoritos = new Set(etiquetaFavorito ? dispositivosEtiquetados(registro, etiquetaFavorito).dispositivos.map((d) => d.entidad) : []);
   const ent = new Map(entidades.map((e) => [e.entity_id, e]));
   const apar = new Map(dispositivos.map((d) => [d.id, d]));
   const areaDe = (entidad) => {
@@ -1172,9 +1217,25 @@ function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas 
   const bocinas = [...lista, ...deInicio].filter((d) => d.tipo === 'bocina' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
   // PANEL-07: todos los aires de la casa (los del panel y los de inicio), una vez cada uno.
   const aires = [...lista, ...deInicio].filter((d) => d.tipo === 'clima' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
+  // PANEL-08: todas las persianas de la casa (las del panel y las de inicio), una vez cada una.
+  const persianas = [...lista, ...deInicio].filter((d) => d.tipo === 'cortina' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
+  // PANEL-08: las escenas por cuarto (área de HA), en el orden de los cuartos; las sin cuarto, al final.
+  const gruposEscenas = [];
+  for (const c of cuartos) {
+    if (c.id === OTROS) continue;
+    const de = escenas.filter((d) => areaDe(d.entidad) === c.id);
+    if (de.length) gruposEscenas.push({ id: c.id, nombre: c.nombre, escenas: de });
+  }
+  for (const a of areas) {
+    if (cuartos.some((c) => c.id === a.area_id)) continue;
+    const de = escenas.filter((d) => areaDe(d.entidad) === a.area_id);
+    if (de.length) gruposEscenas.push({ id: a.area_id, nombre: idioma === 'en' ? traducirNombre(a.name) || a.name : a.name, escenas: de });
+  }
+  const sueltas = escenas.filter((d) => !gruposEscenas.some((g) => g.escenas.includes(d)));
+  if (sueltas.length) gruposEscenas.push({ id: CASA, nombre: TXT[idioma].todaLaCasa, escenas: sueltas });
   const camaras = camarasEtiquetadas({ etiquetas, dispositivos, entidades, areas, estados }, etiqueta, idioma);
   const total = new Set([...lista, ...deInicio].map((d) => d.entidad)).size + camaras.length;
-  return { cuartos, escenas, accesos, bocinas, aires, camaras, total };
+  return { cuartos, escenas, gruposEscenas, accesos, bocinas, aires, persianas, favoritos, camaras, total };
 }
 
 // Qué hace un toque sobre la ficha (o null si el aparato no lo permite).
@@ -1224,13 +1285,15 @@ function fichaDe(d, estados, idioma = 'es') {
     f.sub = est.estado === 'sonando' ? est.titulo || T.sonando : est.estado === 'pausa' ? T.pausa : T.sinMusica;
     if (f.on && num(est.volumen) !== null) f.pct = est.volumen;
   } else if (d.tipo === 'escena') {
-    f.sub = T.escena;
+    f.sub = d.entidad.startsWith('automation.') ? T.automatizacion : T.escena;
   }
   return f;
 }
 
 // Orden de Home Assistant para una acción de la lista blanca.
 function ordenDe(d, accion) {
+  // PANEL-08: una automatización se CORRE (trigger); su turn_on la habilitaría, que no es lo mismo.
+  if (d.tipo === 'escena' && d.entidad.startsWith('automation.')) return accion === 'activar' ? { dominio: 'automation', servicio: 'trigger', datos: { entity_id: d.entidad } } : null;
   const t = TIPOS[d.tipo];
   const a = t?.acciones?.[accion];
   if (!a) return null;
@@ -1254,6 +1317,16 @@ const bonito = (m) => { const t = String(m).replace(/_/g, ' '); return t.charAt(
 const modosDe = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && /^[a-z0-9_]{1,24}$/.test(x)) : []);
 
 // Qué se puede ajustar en la ventana de un dispositivo (null = no tiene ventana).
+// PANEL-08: lo que un aparato permite (lista blanca de src/tipos.mjs), o [] si está caído.
+function capsDe(d, estados) {
+  const e = estados[d.entidad];
+  const t = TIPOS[d.tipo];
+  if (!t || !e || noDisponibleDe(d.tipo).includes(e.state)) return [];
+  const extras = {};
+  for (const [k, id] of Object.entries(d.extras || {})) if (estados[id]) extras[k] = estados[id];
+  return t.capacidadesDe(d.entidad.split('.')[0], e.attributes || {}, extras);
+}
+
 function controlesDe(d, estados) {
   const e = estados[d.entidad];
   const t = TIPOS[d.tipo];
@@ -1290,6 +1363,12 @@ function controlesDe(d, estados) {
 // Un control de la ventana → orden de Home Assistant, o null si el aparato no lo permite
 // o el valor no es válido. Lo común usa la lista blanca de src/tipos.mjs.
 function ordenControl(d, estados, control, valor) {
+  // PANEL-08: el interruptor de una luz del panel lateral sirve también para las que solo prenden/apagan
+  // (esas no tienen ventana, así que controlesDe da null).
+  if (control === 'onoff' && d.tipo === 'luz') {
+    const acc = estados[d.entidad]?.state === 'on' ? 'apagar' : 'encender';
+    return capsDe(d, estados).includes(acc) ? ordenDe(d, acc) : null;
+  }
   const c = controlesDe(d, estados);
   if (!c) return null;
   const e = estados[d.entidad];
@@ -1580,6 +1659,63 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .lateral .piecam .n{font-size:16px}
 .lateral .piecam .l{font-size:13px}
 .lateral .btn-cam{flex:none;justify-content:center;background:#1D262B;border:0}
+.grupo{flex:none;width:calc(clamp(150px,15vw,190px) * 2 + 14px);height:clamp(124px,12vw,150px);padding:16px 16px 14px;border-radius:22px;cursor:pointer;color:#FFFFFF;display:flex;flex-direction:column;justify-content:space-between;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;transition:background-color .2s,border-color .2s}
+.g-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;min-width:0}
+.g-tx{display:flex;flex-direction:column;gap:4px;min-width:0}
+.g-nom{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500;letter-spacing:-0.01em}
+.g-nom svg{flex:none;stroke:rgba(255,255,255,0.85)}
+.grupo.on .g-nom svg{stroke:var(--vp-tinte)}
+.grupo.pers .g-nom svg{stroke:#9FD3F0}
+.g-sub{font-size:15px;color:rgba(255,255,255,0.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grupo.on .g-sub{color:#FFFFFF}
+.g-btns{display:flex;gap:8px;flex:none}
+.g-btn{width:44px;height:44px;border-radius:22px;border:0;background:rgba(255,255,255,0.16);color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.g-btn svg{stroke:currentColor}
+.g-btn.on{background:#FFFFFF;color:#111315}
+.g-btn[disabled]{opacity:0.35;cursor:default}
+.g-seg{display:flex;gap:5px}
+.g-seg i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,0.22)}
+.g-seg i.on{background:var(--vp-tinte)}
+.grupo.pers .g-seg i.on{background:#9FD3F0}
+.g-seg i.nd{background:rgba(255,255,255,0.08)}
+.ficha .cab-ic{position:relative;display:flex;flex:none}
+.ficha .cab-ic svg:first-child{position:absolute;top:-7px;right:-8px;fill:var(--vp-tinte);stroke:none}
+.lat-acc{display:flex;gap:10px;flex:none}
+.btn-lat{flex:1;height:44px;border-radius:22px;border:0;background:#1D262B;color:#FFFFFF;font-size:15px;font-weight:500;cursor:pointer}
+.lz{flex:none;border-radius:18px;padding:14px 16px;background:#1A2428;border:1px solid #33454B;display:flex;flex-direction:column;gap:12px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.lz.quieta{background:#162126;border-color:#2A3A3F}
+.lz.nodisp{background:#15191C;border-color:#262C30}
+.lz-cab{display:flex;align-items:center;gap:12px;min-width:0}
+.lz-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.lz-nom{display:flex;align-items:center;gap:6px;font-size:17px;font-weight:600;min-width:0}
+.lz-nom>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lz-fav{display:flex;flex:none}
+.lz-fav svg{fill:var(--vp-tinte);stroke:none}
+.lz-sub{font-size:14px;color:#A9B8BC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nodisp .lz-sub{color:#8A929E}
+.lz-tg{width:56px;height:32px;border-radius:16px;border:0;background:#2F3D42;position:relative;padding:0;cursor:pointer;flex:none}
+.lz-tg i{position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:12px;background:#FFFFFF;transition:left .15s}
+.lz-tg.on{background:var(--vp-tinte)}
+.lz-tg.on i{left:28px}
+.lz-tg[disabled],.lz-btn[disabled]{opacity:0.35;cursor:default}
+.lz-btns{display:flex;gap:8px;flex:none}
+.lz-btn{width:44px;height:44px;border-radius:22px;border:0;background:#1F2F33;color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.lz-btn svg{stroke:currentColor}
+.lz-br{height:36px;border-radius:12px}
+.lz-br i{border-radius:12px}
+.quieta .lz-br i{background:rgba(255,255,255,0.18)}
+.lat-et{margin-top:6px}
+.lat-esc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lat-esc .escena{min-width:0;height:64px;padding:0 14px}
+.chip.pers,.chip.escs{cursor:pointer;color:#FFFFFF;-webkit-user-select:none;user-select:none}
+.chip.pers{background:rgba(30,62,78,0.9);border:1px solid #6FB8DC}
+.chip.pers.quieto{background:rgba(30,62,78,0.5);border-color:rgba(111,184,220,0.45)}
+.chip.pers svg{stroke:#9FD3F0}
+.chip.pers .et{color:rgba(225,240,248,0.9)}
+.chip.escs{background:rgba(70,52,110,0.9);border:1px solid #AFA9EC}
+.chip.escs svg{stroke:#CECBF6}
+.chip.escs .et{color:rgba(238,237,254,0.9)}
+@media (orientation: portrait){.fila .grupo{grid-column:span 2;width:auto;height:140px}}
 @media (max-width: 960px){.tabs{order:4;flex-basis:100%;margin:0}}
 @media (orientation: portrait){.fila.escenas .escena{min-width:0}.fila{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}.ficha{width:auto;height:140px}.puntos{display:none}}
 `;
@@ -1588,9 +1724,10 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 
 const svg = (d, tam = 30) => `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24" fill="none" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${esc(d)}"></path></svg>`;
 
-function htmlFicha(f, { espera = false, activada = false, idioma = 'es' } = {}) {
+function htmlFicha(f, { espera = false, activada = false, idioma = 'es', favorito = false } = {}) {
   const T = TXT[idioma];
   const clases = ['ficha', 'vidrio'];
+  if (favorito) clases.push('fav');
   if (f.on || activada) clases.push('on');
   if (!f.disponible) clases.push('nodisp');
   if (espera) clases.push('espera');
@@ -1598,7 +1735,7 @@ function htmlFicha(f, { espera = false, activada = false, idioma = 'es' } = {}) 
   const barra = f.pct !== null && f.pct !== undefined ? `<span class="barrita"><i style="width:${Math.max(0, Math.min(100, Math.round(f.pct)))}%"></i></span>` : '';
   const desactivada = !f.disponible || !f.accion ? ' disabled' : '';
   const presion = f.tipo === 'escena' ? '' : ` aria-pressed="${f.on ? 'true' : 'false'}"`;
-  return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${presion}${desactivada}><span class="cab"><span class="nom">${esc(f.nombre)}</span>${svg(f.icono)}</span><span class="pie"><span class="est">${esc(sub)}</span>${barra}</span></button>`;
+  return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${presion}${desactivada}><span class="cab"><span class="nom">${esc(f.nombre)}</span>${favorito ? `<span class="cab-ic">${svg(ICONOS.estrella, 14)}${svg(f.icono)}</span>` : svg(f.icono)}</span><span class="pie"><span class="est">${esc(sub)}</span>${barra}</span></button>`;
 }
 
 function htmlEscena(f, { espera = false, activada = false, idioma = 'es' } = {}) {
@@ -1744,9 +1881,94 @@ function htmlBocina(d, estados, idioma, vista) {
 }
 
 // PANEL-07: un panel lateral (audio, aires o cámaras). `cuerpo` va en la lista que se desliza; `pie` abajo.
-function htmlLateral(tipo, titulo, cuerpo, idioma, pie = '') {
+function htmlLateral(tipo, titulo, cuerpo, idioma, pie = '', arriba = '') {
   const T = TXT[idioma];
-  return `<div class="fondo-lateral" data-cerrar-lateral="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="${esc(tipo)}"><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-lateral="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div><div class="lista-lat">${cuerpo}</div>${pie}</div>`;
+  return `<div class="fondo-lateral" data-cerrar-lateral="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="${esc(tipo)}"><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-lateral="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div>${arriba}<div class="lista-lat">${cuerpo}</div>${pie}</div>`;
+}
+
+// ------------------------------------------------------------------ PANEL-08: luces y persianas agrupadas
+
+// Las luces que se juntan en la tarjeta «Luces»: solo `light.` (los apagadores y enchufes van sueltos).
+const lucesDe = (c) => (c?.dispositivos || []).filter((d) => d.tipo === 'luz' && d.entidad.startsWith('light.'));
+const persianasDe = (c) => (c?.dispositivos || []).filter((d) => d.tipo === 'cortina');
+
+// La tarjeta ancha de un grupo (tipo 'luces' o 'persianas') de un cuarto (o de la casa).
+function htmlGrupo(tipo, grupoId, lista, estados, idioma, abierta) {
+  const T = TXT[idioma];
+  const fichas = lista.map((d) => fichaDe(d, estados, idioma));
+  const vivas = fichas.filter((f) => f.disponible);
+  const on = vivas.filter((f) => f.on).length;
+  const luz = tipo === 'luces';
+  const titulo = luz ? T.luces2 : T.persianas;
+  const sub = vivas.length ? (luz ? T.lucesDe(on, vivas.length) : T.persianasDe(on, vivas.length)) : T.noDisp;
+  const seg = fichas.map((f) => `<i class="${f.disponible ? (f.on ? 'on' : 'off') : 'nd'}"></i>`).join('');
+  const id = esc(grupoId);
+  const boton = (accion, icono, etiqueta, extra = '') => `<button class="g-btn${extra}" data-todas="${accion}" data-cual="${tipo}" data-grupo-id="${id}" aria-label="${esc(etiqueta)}"${vivas.length ? '' : ' disabled'}>${svg(icono, 20)}</button>`;
+  const botones = luz
+    ? boton(on ? 'apagar' : 'encender', ICONOS.encendido, on ? T.apagarTodas : T.encenderTodas, on ? ' on' : '')
+    : `${boton('abrir', ICONOS.arriba, T.abrirTodas)}${boton('cerrar', ICONOS.abajo, T.cerrarTodas)}`;
+  return `<div class="grupo vidrio${on ? ' on' : ''}${luz ? '' : ' pers'}" data-grupo="${tipo}" data-grupo-id="${id}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${luz ? T.abrirLuces : T.abrirPersianas}: ${sub}`)}"><div class="g-cab"><span class="g-tx"><span class="g-nom">${svg(luz ? ICONOS.light : ICONOS.cortina, 20)}<span>${esc(titulo)}</span></span><span class="g-sub">${esc(sub)}</span></span><span class="g-btns">${botones}</span></div><div class="g-seg">${seg}</div></div>`;
+}
+
+// Los botones «todas» de arriba del panel lateral de luces o persianas.
+function htmlAccionesTodas(tipo, grupoId, idioma) {
+  const T = TXT[idioma];
+  const b = (accion, texto) => `<button class="btn-lat" data-todas="${accion}" data-cual="${tipo}" data-grupo-id="${esc(grupoId)}">${esc(texto)}</button>`;
+  return `<div class="lat-acc">${tipo === 'luces' ? b('apagar', T.apagarTodas) + b('encender', T.encenderTodas) : b('abrir', T.abrirTodas) + b('cerrar', T.cerrarTodas)}</div>`;
+}
+
+// Un renglón del panel lateral: una luz (interruptor y brillo) o una persiana (▲ ■ ▼).
+function htmlRenglon(d, estados, idioma, vista, { favorito = false, lugar = '' } = {}) {
+  const T = TXT[idioma];
+  const f = fichaDe(d, estados, idioma);
+  const c = f.disponible ? controlesDe(d, estados) : null;
+  const caps = capsDe(d, estados);
+  const ent = esc(d.entidad);
+  const clases = ['lz'];
+  if (!f.disponible) clases.push('nodisp');
+  else if (!f.on) clases.push('quieta');
+  const sub = [lugar, f.disponible ? f.sub : T.sinConexion].filter(Boolean).join(' · ');
+  const estrella = favorito ? `<span class="lz-fav" aria-label="${esc(T.favorito)}">${svg(ICONOS.estrella, 13)}</span>` : '';
+  let derecha = '';
+  let abajo = '';
+  if (d.tipo === 'cortina') {
+    clases.push('pr');
+    const b = (control, icono, etiqueta) => `<button class="lz-btn" data-control="${control}" data-valor="" data-entidad="${ent}" aria-label="${esc(etiqueta)}"${caps.includes(control) ? '' : ' disabled'}>${svg(icono, 20)}</button>`;
+    derecha = `<span class="lz-btns">${b('abrir', ICONOS.arriba, T.subir)}${b('detener', ICONOS.alto, T.detener)}${b('cerrar', ICONOS.abajo, T.bajar)}</span>`;
+  } else {
+    const puede = caps.includes(f.on ? 'apagar' : 'encender');
+    derecha = `<button class="lz-tg${f.on ? ' on' : ''}" role="switch" aria-checked="${f.on ? 'true' : 'false'}" data-control="onoff" data-valor="" data-entidad="${ent}" aria-label="${esc(f.nombre)}"${puede ? '' : ' disabled'}><i></i></button>`;
+    if (c && c.brillo) {
+      const arr = vista.arrastre && vista.arrastre.entidad === d.entidad && vista.arrastre.control === 'brillo' ? vista.arrastre : null;
+      const real = f.on ? num(f.estado?.brillo) : 0;
+      const v = arr ? Math.max(1, Math.min(100, Math.round(arr.valor))) : real ?? 0;
+      abajo = `<div class="desl lz-br"><i style="width:${v}%"></i><input type="range" min="1" max="100" step="1" value="${Math.max(1, v)}" data-control="brillo" data-entidad="${ent}" aria-label="${esc(T.brillo)}"></div>`;
+    }
+  }
+  return `<div class="${clases.join(' ')}" data-tarjeta="${ent}"><div class="lz-cab"><span class="lz-tx"><span class="lz-nom"><span>${esc(f.nombre)}</span>${estrella}</span><span class="lz-sub">${esc(sub)}</span></span>${derecha}</div>${abajo}</div>`;
+}
+
+function htmlChipPersianas(lista, estados, idioma, abierta) {
+  const T = TXT[idioma];
+  const vivas = lista.map((d) => fichaDe(d, estados, idioma)).filter((f) => f.disponible);
+  const ab = vivas.filter((f) => f.on).length;
+  const et = ab ? T.abiertas(ab) : T.todasCerradas;
+  return `<button class="chip vidrio pers${ab ? '' : ' quieto'}" data-persianas-chip="1" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${T.abrirPersianas}: ${et}`)}">${svg(ICONOS.cortina, 18)}<span class="va">${esc(T.persianas)}</span><span class="et">${esc(et)}</span>${svg(ICONOS.derecha, 16)}</button>`;
+}
+
+function htmlChipEscenas(lista, idioma, abierta) {
+  const T = TXT[idioma];
+  return `<button class="chip vidrio escs" data-escenas-chip="1" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${T.abrirEscenas}: ${lista.length}`)}">${svg(ICONOS.escena, 18)}<span class="va">${esc(T.escenas)}</span><span class="et">${esc(T.escenasN(lista.length))}</span>${svg(ICONOS.derecha, 16)}</button>`;
+}
+
+// Las escenas por cuarto (pestaña Escenas y panel lateral): etiqueta + botones.
+function htmlGruposEscenas(grupos, estados, opc, idioma, enLateral) {
+  return grupos
+    .map((g) => {
+      const b = g.escenas.map((d) => htmlEscena(fichaDe(d, estados, idioma), opc({ entidad: d.entidad }))).join('');
+      return enLateral ? `<div class="etiqueta lat-et">${esc(g.nombre)}</div><div class="lat-esc">${b}</div>` : `<div class="etiqueta der">${esc(g.nombre)}</div><div class="fila escenas der" data-fila="escenas-${esc(g.id)}">${b}</div>`;
+    })
+    .join('');
 }
 
 // ------------------------------------------------------------------ PANEL-07: aires (chip + panel lateral)
@@ -1895,9 +2117,12 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
   const { hora, h, dia } = partesHora(ahora, idioma, zona);
   const camaras = modelo.camaras || [];
   const enCamaras = vista.pestana === CAMARAS && camaras.length > 0;
-  const cuartoSel = enCamaras ? null : modelo.cuartos.find((c) => c.id === vista.pestana);
-  const pestana = enCamaras ? CAMARAS : cuartoSel ? cuartoSel.id : CASA;
-  const tabs = [{ id: CASA, nombre: T.casa }, ...modelo.cuartos.map((c) => ({ id: c.id, nombre: c.nombre })), ...(camaras.length ? [{ id: CAMARAS, nombre: T.camaras }] : [])]
+  // PANEL-08: pestaña «Escenas» (si hay), antes de Cámaras.
+  const escenas = modelo.escenas || [];
+  const enEscenas = vista.pestana === ESCENAS && escenas.length > 0;
+  const cuartoSel = enCamaras || enEscenas ? null : modelo.cuartos.find((c) => c.id === vista.pestana);
+  const pestana = enCamaras ? CAMARAS : enEscenas ? ESCENAS : cuartoSel ? cuartoSel.id : CASA;
+  const tabs = [{ id: CASA, nombre: T.casa }, ...modelo.cuartos.map((c) => ({ id: c.id, nombre: c.nombre })), ...(escenas.length ? [{ id: ESCENAS, nombre: T.escenas }] : []), ...(camaras.length ? [{ id: CAMARAS, nombre: T.camaras }] : [])]
     .map((t) => `<button class="tab${t.id === pestana ? ' activa' : ''}" data-tab="${esc(t.id)}"${t.id === pestana ? ' aria-current="page"' : ''}>${esc(t.nombre)}</button>`)
     .join('');
   const espera = vista.espera || new Set();
@@ -1937,6 +2162,10 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
       cuerpo = `<div class="rejilla">${celdasCamaras(camaras, estados, idioma, vista)}</div>`;
     }
     centro = `<div class="cab-cams"><div><div class="sobre">${esc(sobre)}</div><div class="titulo cams">${esc(T.camaras)}</div></div>${boton}</div>${cuerpo}`;
+  } else if (enEscenas) {
+    // PANEL-08: todas las escenas, scripts y automatizaciones del panel, agrupadas por cuarto.
+    centro = `<div class="sobre">${esc(T.escenasSobre(escenas.length))}</div><div class="titulo">${esc(T.escenas)}</div>`;
+    abajo = `<div class="abajo escenas-tab">${htmlGruposEscenas(modelo.gruposEscenas || [], estados, opc, idioma, false)}</div>`;
   } else if (!cuartoSel) {
     const vistos = new Set();
     const todas = [...modelo.cuartos.flatMap((c) => c.dispositivos), ...modelo.accesos]
@@ -1957,21 +2186,16 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     if (bocinas.length) chips.push(htmlChipAudio(CASA, bocinas, estados, idioma, abierto('audio', CASA)));
     // PANEL-07: el chip de cámaras abre el panel lateral con las cámaras.
     if (camaras.length) chips.push(htmlChipCamaras(camaras, estados, idioma, abierto('camaras', CASA)));
-    const persianas = todas.filter((f) => f.tipo === 'cortina' && f.disponible);
-    if (persianas.length) {
-      const ab = persianas.filter((f) => f.on).length;
-      chips.push(htmlChip(ICONOS.cortina, T.persianas, ab ? T.abiertas(ab) : T.todasCerradas));
-    }
+    // PANEL-08: el chip de persianas abre el panel con todas las persianas de la casa; el de escenas, sus botones.
+    const persianas = modelo.persianas || [];
+    if (persianas.some((d) => fichaDe(d, estados, idioma).disponible)) chips.push(htmlChipPersianas(persianas, estados, idioma, abierto('persianas', CASA)));
+    if (escenas.length) chips.push(htmlChipEscenas(escenas, idioma, abierto('escenas', CASA)));
     const vacio = modelo.total === 0 ? `<div class="vacio vidrio"><h2>${esc(T.vacioTitulo)}</h2><p>${esc(T.vacioTexto)}</p></div>` : '';
     centro = `<div class="sobre">${esc(sobre)}</div><div class="titulo casa">${esc(saludo)}</div><div class="sub">${esc(modelo.total ? `${dia} · ${T.luces(luces)}` : dia)}</div>${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}${vacio}`;
     const partes = [];
     if (modelo.accesos.length) {
       const fichas = modelo.accesos.map((d) => fichaDe(d, estados, idioma)).map((f) => htmlFicha(f, opc(f))).join('');
       partes.push(`<div class="etiqueta der">${esc(T.accesos)}</div><div class="fila accesos der" data-fila="accesos">${fichas}</div>`);
-    }
-    if (modelo.escenas.length) {
-      const fichas = modelo.escenas.map((d) => htmlEscena(fichaDe(d, estados, idioma), opc({ entidad: d.entidad }))).join('');
-      partes.push(`<div class="etiqueta der">${esc(T.escenas)}</div><div class="fila escenas der" data-fila="escenas">${fichas}</div>`);
     }
     if (partes.length) abajo = `<div class="abajo">${partes.join('')}</div>`;
   } else {
@@ -1985,19 +2209,50 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     if (bocinas.length) cs.push(htmlChipAudio(cuartoSel.id, bocinas, estados, idioma, abierto('audio', cuartoSel.id)));
     const chip = cs.length ? `<div class="chips">${cs.join('')}</div>` : '';
     centro = `<div class="sobre">${esc(enc.sobre)}</div><div class="titulo">${esc(cuartoSel.nombre)}</div><div class="sub">${esc(enc.sub)}</div>${chip}`;
-    const html = fichas.map((f) => htmlFicha(f, opc(f))).join('');
-    const puntos = fichas.length > 6 ? '<div class="puntos der" aria-hidden="true"><span></span><span></span></div>' : '';
-    if (fichas.length) abajo = `<div class="abajo"><div class="fila der" data-fila="${esc(cuartoSel.id)}">${html}</div>${puntos}</div>`;
+    // PANEL-08: con 2 o más luces (o persianas), una tarjeta las junta; las favoritas salen también sueltas.
+    const favs = modelo.favoritos || new Set();
+    const lucesG = lucesDe(cuartoSel);
+    const persG = persianasDe(cuartoSel);
+    const juntaL = lucesG.length >= 2;
+    const juntaP = persG.length >= 2;
+    const piezas = [];
+    let pusoL = false;
+    let pusoP = false;
+    cuartoSel.dispositivos.forEach((d, i) => {
+      const enL = juntaL && lucesG.includes(d);
+      const enP = juntaP && persG.includes(d);
+      if (enL && !pusoL) {
+        piezas.push(htmlGrupo('luces', cuartoSel.id, lucesG, estados, idioma, abierto('luces', cuartoSel.id)));
+        pusoL = true;
+      }
+      if (enP && !pusoP) {
+        piezas.push(htmlGrupo('persianas', cuartoSel.id, persG, estados, idioma, abierto('persianas', cuartoSel.id)));
+        pusoP = true;
+      }
+      if ((enL || enP) && !favs.has(d.entidad)) return;
+      piezas.push(htmlFicha(fichas[i], { ...opc(fichas[i]), favorito: (enL || enP) && favs.has(d.entidad) }));
+    });
+    const html = piezas.join('');
+    const puntos = piezas.length + (pusoL ? 1 : 0) + (pusoP ? 1 : 0) > 6 ? '<div class="puntos der" aria-hidden="true"><span></span><span></span></div>' : '';
+    if (piezas.length) abajo = `<div class="abajo"><div class="fila der" data-fila="${esc(cuartoSel.id)}">${html}</div>${puntos}</div>`;
   }
   const aviso = vista.aviso ? `<div class="aviso" role="status">${esc(vista.aviso)}</div>` : '';
   // PANEL-06/07: el panel lateral abierto (audio, aires o cámaras), solo en la pestaña de donde se abrió.
   let audio = '';
   const grupo = grupoLateral(modelo, vista.lateral);
-  if (grupo && !enCamaras && (grupo.id === CASA ? !cuartoSel : cuartoSel && cuartoSel.id === grupo.id)) {
-    if (grupo.tipo === 'audio') {
+  if (grupo && !enCamaras && !enEscenas && (grupo.id === CASA ? !cuartoSel : cuartoSel && cuartoSel.id === grupo.id)) {
+    const lugarDe = (d) => (grupo.id === CASA ? (modelo.cuartos.find((c) => c.id !== OTROS && c.dispositivos.some((x) => x.entidad === d.entidad)) || {}).nombre || '' : '');
+    const favs = modelo.favoritos || new Set();
+    if (grupo.tipo === 'luces' || grupo.tipo === 'persianas') {
+      const titulo = grupo.tipo === 'luces' ? T.lucesDeCuarto(grupo.nombre) : grupo.id === CASA ? T.persianasCasa : T.persianasDeCuarto(grupo.nombre);
+      const cuerpo = grupo.lista.map((d) => htmlRenglon(d, estados, idioma, vista, { favorito: favs.has(d.entidad), lugar: lugarDe(d) })).join('');
+      audio = htmlLateral(grupo.tipo, titulo, cuerpo, idioma, '', htmlAccionesTodas(grupo.tipo, grupo.id, idioma));
+    } else if (grupo.tipo === 'escenas') {
+      const pie = `<button class="btn-cam" data-ir-escenas="1">${svg(ICONOS.rejilla, 18)}<span>${esc(T.verTodas)}</span></button>`;
+      audio = htmlLateral('escenas', T.escenas, htmlGruposEscenas(modelo.gruposEscenas || [], estados, opc, idioma, true), idioma, pie);
+    } else if (grupo.tipo === 'audio') {
       audio = htmlLateral('audio', grupo.id === CASA ? T.audioCasa : T.audioDe(grupo.nombre), grupo.lista.map((d) => htmlBocina(d, estados, idioma, vista)).join(''), idioma);
     } else if (grupo.tipo === 'aire') {
-      const lugarDe = (d) => (grupo.id === CASA ? (modelo.cuartos.find((c) => c.id !== OTROS && c.dispositivos.some((x) => x.entidad === d.entidad)) || {}).nombre || '' : '');
       audio = htmlLateral('aire', grupo.id === CASA ? T.airesCasa : T.airesDe(grupo.nombre), grupo.lista.map((d) => htmlAire(d, estados, idioma, lugarDe(d))).join(''), idioma);
     } else {
       const n = grupo.lista.filter((c) => camaraEnLinea(estados[c.entidad])).length;
@@ -2010,7 +2265,7 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const cuarto = modelo.cuartos.find((c) => [...c.dispositivos, ...(c.bocinas || [])].some((x) => x.entidad === vista.ventana));
     const d = cuarto
       ? [...cuarto.dispositivos, ...(cuarto.bocinas || [])].find((x) => x.entidad === vista.ventana)
-      : modelo.accesos.find((x) => x.entidad === vista.ventana) || (modelo.bocinas || []).find((x) => x.entidad === vista.ventana) || (modelo.aires || []).find((x) => x.entidad === vista.ventana);
+      : modelo.accesos.find((x) => x.entidad === vista.ventana) || (modelo.bocinas || []).find((x) => x.entidad === vista.ventana) || (modelo.aires || []).find((x) => x.entidad === vista.ventana) || (modelo.persianas || []).find((x) => x.entidad === vista.ventana);
     if (d) ventana = htmlVentana(d, estados, idioma, vista, cuarto && cuarto.id !== OTROS ? cuarto.nombre : '');
   }
   return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}</div></div><div class="centro der${enCamaras ? ' cams' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
@@ -2041,6 +2296,13 @@ function grupoLateral(modelo, lateral) {
   const { tipo, grupo } = lateral;
   const de = (lista, c) => (lista.length ? { tipo, id: c ? c.id : CASA, nombre: c ? c.nombre : '', lista } : null);
   if (tipo === 'camaras') return grupo === CASA ? de(modelo.camaras || [], null) : null;
+  // PANEL-08: escenas (solo Casa), persianas (Casa o cuarto) y luces (cuarto).
+  if (tipo === 'escenas') return grupo === CASA ? de(modelo.escenas || [], null) : null;
+  if (tipo === 'persianas' || tipo === 'luces') {
+    if (grupo === CASA) return tipo === 'persianas' ? de(modelo.persianas || [], null) : null;
+    const c = (modelo.cuartos || []).find((x) => x.id === grupo);
+    return c ? de(tipo === 'luces' ? lucesDe(c) : persianasDe(c), c) : null;
+  }
   if (tipo !== 'audio' && tipo !== 'aire') return null;
   if (grupo === CASA) return de((tipo === 'audio' ? modelo.bocinas : modelo.aires) || [], null);
   const c = (modelo.cuartos || []).find((x) => x.id === grupo);
@@ -2069,7 +2331,7 @@ function morph(a, b) {
   if (a.hasAttribute && a.hasAttribute('data-vivo')) return;
   const ac = [...a.childNodes];
   const bc = [...b.childNodes];
-  const clave = (n) => (n.nodeType === 1 ? `${n.getAttribute('data-ficha')}|${n.getAttribute('data-bocina')}|${n.getAttribute('data-clima')}|${n.getAttribute('data-vivo')}|${n.getAttribute('data-lateral')}` : '');
+  const clave = (n) => (n.nodeType === 1 ? `${n.getAttribute('data-ficha')}|${n.getAttribute('data-bocina')}|${n.getAttribute('data-clima')}|${n.getAttribute('data-tarjeta')}|${n.getAttribute('data-grupo')}|${n.getAttribute('data-vivo')}|${n.getAttribute('data-lateral')}` : '');
   bc.forEach((y, i) => {
     const x = ac[i];
     if (!x) a.appendChild(y);
@@ -2098,7 +2360,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   class VizionsPanelCard extends HTMLElement {
     constructor() {
       super();
-      this._cfg = { etiqueta: ETIQUETA_PANEL, etiquetaInicio: ETIQUETA_INICIO, marca: '', fondo: '' };
+      this._cfg = { etiqueta: ETIQUETA_PANEL, etiquetaInicio: ETIQUETA_INICIO, etiquetaFavorito: ETIQUETA_FAVORITO, marca: '', fondo: '' };
       this._ventana = null;
       this._arrastre = null;
       this._camara = null;
@@ -2127,11 +2389,11 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       r.addEventListener('pointerup', () => this._soltar());
       r.addEventListener('pointercancel', () => this._soltar());
       r.addEventListener('contextmenu', (ev) => {
-        const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima]');
+        const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima], [data-tarjeta]');
         if (!b) return;
         ev.preventDefault();
-        if ((b.dataset.bocina || b.dataset.clima) && ev.target.closest('button, input')) return;
-        if (this._abrirVentana(b.dataset.ficha || b.dataset.bocina || b.dataset.clima)) this._suprimirClic = Date.now();
+        if ((b.dataset.bocina || b.dataset.clima || b.dataset.tarjeta) && ev.target.closest('button, input')) return;
+        if (this._abrirVentana(b.dataset.ficha || b.dataset.bocina || b.dataset.clima || b.dataset.tarjeta)) this._suprimirClic = Date.now();
       });
       // Barras: «input» mientras se arrastra, «change» al soltar (ahí se manda la orden).
       // La de la ventana es del aparato de la ventana; las del panel de audio dicen de qué bocina son.
@@ -2163,6 +2425,13 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       );
       this._alPantalla = () => this._render();
       this.addEventListener('keydown', (ev) => {
+        // PANEL-08: la tarjeta de grupo es role=button: Enter o espacio la abren.
+        const g = (ev.key === 'Enter' || ev.key === ' ') && ev.composedPath().find((x) => x.dataset && x.dataset.grupo);
+        if (g && !ev.composedPath().some((x) => x.localName === 'button')) {
+          ev.preventDefault();
+          g.click();
+          return;
+        }
         if (ev.key !== 'Escape') return;
         if (enPantallaCompleta(this.shadowRoot)) salirDePantallaCompleta();
         else if (this._ventana) this._cerrarVentana();
@@ -2184,6 +2453,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._cfg = {
         etiqueta: typeof cfg.etiqueta === 'string' && cfg.etiqueta.trim() ? cfg.etiqueta.trim() : ETIQUETA_PANEL,
         etiquetaInicio: typeof cfg.etiqueta_inicio === 'string' && cfg.etiqueta_inicio.trim() ? cfg.etiqueta_inicio.trim() : ETIQUETA_INICIO,
+        etiquetaFavorito: typeof cfg.etiqueta_favorito === 'string' && cfg.etiqueta_favorito.trim() ? cfg.etiqueta_favorito.trim() : ETIQUETA_FAVORITO,
         marca: typeof cfg.marca === 'string' ? cfg.marca.trim() : '',
         fondo: urlSegura(cfg.fondo) || '',
         kiosko: cfg.kiosko === false ? false : true,
@@ -2353,7 +2623,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     _modelo(idioma) {
       if (!this._reg || !this._hass) return { cuartos: [], escenas: [], total: 0 };
-      return armarModelo({ ...this._reg, estados: this._hass.states, etiqueta: this._cfg.etiqueta, etiquetaInicio: this._cfg.etiquetaInicio, idioma });
+      return armarModelo({ ...this._reg, estados: this._hass.states, etiqueta: this._cfg.etiqueta, etiquetaInicio: this._cfg.etiquetaInicio, etiquetaFavorito: this._cfg.etiquetaFavorito, idioma });
     }
 
     _render() {
@@ -2496,14 +2766,14 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
 
     _presionar(ev) {
       if (ev.button > 0) return;
-      const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima]');
+      const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima], [data-tarjeta]');
       clearTimeout(this._lp);
       this._lp = null;
       if (!b || b.disabled) return;
-      // En la tarjeta de una bocina o de un aire, los botones y la barra son suyos: mantenerlos no abre la ventana.
-      if ((b.dataset.bocina || b.dataset.clima) && ev.target.closest('button, input')) return;
+      // En la tarjeta de una bocina, un aire, una luz o una persiana del panel, los botones y la barra son suyos.
+      if ((b.dataset.bocina || b.dataset.clima || b.dataset.tarjeta) && ev.target.closest('button, input')) return;
       this._lpInicio = { x: ev.clientX, y: ev.clientY };
-      const entidad = b.dataset.ficha || b.dataset.bocina || b.dataset.clima;
+      const entidad = b.dataset.ficha || b.dataset.bocina || b.dataset.clima || b.dataset.tarjeta;
       this._lp = setTimeout(() => {
         this._lp = null;
         // Un toque largo nunca prende ni apaga, tenga ventana o no.
@@ -2536,9 +2806,29 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._cerrarLateral();
         return;
       }
-      const chip = ev.target.closest('[data-audio], [data-aire], [data-camaras-chip]');
+      // PANEL-08: «todas» (apagar/encender luces, abrir/cerrar persianas) de una tarjeta de grupo o del panel.
+      const todas = ev.target.closest('[data-todas]');
+      if (todas) {
+        if (!todas.disabled) this._todas(todas.dataset.todas, todas.dataset.cual, todas.dataset.grupoId);
+        return;
+      }
+      if (ev.target.closest('[data-ir-escenas]')) {
+        this._irAPestana(ESCENAS);
+        return;
+      }
+      const chip = ev.target.closest('[data-audio], [data-aire], [data-camaras-chip], [data-persianas-chip], [data-escenas-chip], [data-grupo]');
       if (chip) {
-        const l = chip.dataset.audio ? { tipo: 'audio', grupo: chip.dataset.audio } : chip.dataset.aire ? { tipo: 'aire', grupo: chip.dataset.aire } : { tipo: 'camaras', grupo: CASA };
+        const l = chip.dataset.audio
+          ? { tipo: 'audio', grupo: chip.dataset.audio }
+          : chip.dataset.aire
+            ? { tipo: 'aire', grupo: chip.dataset.aire }
+            : chip.dataset.grupo
+              ? { tipo: chip.dataset.grupo, grupo: chip.dataset.grupoId }
+              : chip.dataset.persianasChip
+                ? { tipo: 'persianas', grupo: CASA }
+                : chip.dataset.escenasChip
+                  ? { tipo: 'escenas', grupo: CASA }
+                  : { tipo: 'camaras', grupo: CASA };
         if (this._lateral && this._lateral.tipo === l.tipo && this._lateral.grupo === l.grupo) this._cerrarLateral();
         else this._abrirLateral(l);
         return;
@@ -2626,6 +2916,54 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._render();
     }
 
+    // PANEL-08: «todas» de un grupo: una orden por servicio con todas las entidades que lo permiten.
+    _todas(accion, cual, grupoId) {
+      const h = this._hass;
+      const g = grupoLateral(this._modeloActual, { tipo: cual, grupo: grupoId });
+      if (!h || !g) return;
+      const porServicio = new Map();
+      for (const d of g.lista) {
+        const f = fichaDe(d, h.states, idiomaDe(h));
+        if (!f.disponible) continue;
+        if (!capsDe(d, h.states).includes(accion)) continue;
+        const o = ordenDe(d, accion);
+        if (!o) continue;
+        const k = `${o.dominio}.${o.servicio}`;
+        if (!porServicio.has(k)) porServicio.set(k, { ...o, datos: { ...o.datos, entity_id: [] } });
+        porServicio.get(k).datos.entity_id.push(o.datos.entity_id);
+        this._espera.set(d.entidad, { desde: h.states[d.entidad]?.last_updated, hasta: Date.now() + 5000 });
+      }
+      if (!porServicio.size) return;
+      this._render();
+      setTimeout(() => this._render(), 5200);
+      for (const o of porServicio.values()) {
+        Promise.resolve(h.callService(o.dominio, o.servicio, o.datos)).catch((e) => {
+          console.warn('[vizions-panel] todas', e);
+          this._aviso = TXT[idiomaDe(h)].errorOrden;
+          this._render();
+          clearTimeout(this._tAviso);
+          this._tAviso = setTimeout(() => {
+            this._aviso = '';
+            this._render();
+          }, 4000);
+        });
+      }
+    }
+
+    // PANEL-08: ir a una pestaña (Escenas) desde un panel lateral.
+    _irAPestana(id) {
+      this._lateral = null;
+      this._ventana = null;
+      this._camara = null;
+      this._pestana = id;
+      try {
+        localStorage.setItem('vizions-panel-pestana', this._pestana);
+      } catch {
+        /* sin almacenamiento */
+      }
+      this._render();
+    }
+
     // PANEL-07: a la pestaña Cámaras, con una cámara en grande (o la cuadrícula).
     _irACamaras(camara) {
       this._lateral = null;
@@ -2688,6 +3026,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

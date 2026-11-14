@@ -1,6 +1,6 @@
-// Vizions Panel 0.9.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.10.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 39761f294e2dea101b3b503998a3a0bf
+// Huella del contenido: 1c20341b82ded0bdd188e15ee35b2876
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -907,19 +907,27 @@ const __vp_tarjeta = (() => {
 // ventana abiertos) regresa solo a los 5 min sin tocar la pantalla (no si hay una cámara en pantalla
 // completa). Sin `?cuarto=`, todo igual que antes.
 //
+// VIZIONS-PANEL-11 (0.10.0, mockup aprobado el 10 nov 2026): ventiladores (`fan.`), solo en el panel del
+// dueño (la TV del huésped no los toma). Chip «Ventiladores» en Casa (todos los de la casa) y en cada cuarto
+// con ventilador (los de ese cuarto): abre un panel lateral con una tarjeta por ventilador — encender/apagar,
+// velocidad (un botón por paso, según `percentage_step`; sin velocidad no hay fila) y oscilación (si la
+// soporta). En el cuarto la ficha se queda; con 2 o más ventiladores, una tarjeta ancha «Ventiladores» los
+// junta (botón para apagar/encender todos) y los favoritos salen también sueltos. Un apagador que en HA se
+// muestra como ventilador («Mostrar como → Ventilador») sale una sola vez, como ventilador.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.9.0';
+const VERSION_PANEL = '0.10.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
 const EVENTOS_REGISTRO = ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated', 'label_registry_updated'];
 const OTROS = '__otros__';
-const ORDEN_TIPOS = ['luz', 'cortina', 'clima', 'bocina', 'escena'];
+const ORDEN_TIPOS = ['luz', 'cortina', 'clima', 'ventilador', 'bocina', 'escena'];
 const CASA = '__casa__';
 const CAMARAS = '__camaras__';
 const ESCENAS = '__escenas__';
@@ -1017,6 +1025,9 @@ const TXT = {
     apagarTodas: 'Apagar todas', encenderTodas: 'Encender todas', abrirTodas: 'Abrir todas', cerrarTodas: 'Cerrar todas', favorito: 'Favorito',
     lucesDeCuarto: (c) => `Luces · ${c}`, persianasCasa: 'Persianas de la casa', persianasDeCuarto: (c) => `Persianas · ${c}`,
     abrirLuces: 'Abrir las luces', abrirPersianas: 'Abrir las persianas', abrirEscenas: 'Abrir las escenas', escenasN: (n) => `${n}`,
+    ventiladores: (n) => `${n} ventiladores`, ventiladores2: 'Ventiladores', ventiladoresDe: (on, n) => (on === 0 ? 'Todos apagados' : on === n ? 'Todos encendidos' : `${on} de ${n} encendidos`),
+    ventiladoresCasa: 'Ventiladores de la casa', ventiladoresDeCuarto: (c) => `Ventiladores · ${c}`, abrirVentiladores: 'Abrir los ventiladores', apagarTodos: 'Apagar todos', encenderTodos: 'Encender todos',
+    velocidad: 'Velocidad', velDe: (v, n) => `Vel. ${v} de ${n}`, oscilacion: 'Oscilación', encendidoV: 'Encendido',
     aires: (n) => `${n} aires`, encendidosN: (n) => (n === 1 ? '1 encendido' : `${n} encendidos`), apagadosMin: 'apagados', adentro: (t) => `${t}° adentro`,
     airesCasa: 'Aires de la casa', airesDe: (c) => `Aires · ${c}`, abrirAires: 'Abrir los aires', abrirCamaras: 'Abrir las cámaras', camarasLat: (n) => `Cámaras · ${n} en línea`,
     clima: { 'clear-night': 'DESPEJADO', cloudy: 'NUBLADO', exceptional: 'EXCEPCIONAL', fog: 'NIEBLA', hail: 'GRANIZO', lightning: 'TORMENTA', 'lightning-rainy': 'TORMENTA', partlycloudy: 'PARCIALMENTE NUBLADO', pouring: 'AGUACERO', rainy: 'LLUVIA', snowy: 'NIEVE', 'snowy-rainy': 'AGUANIEVE', sunny: 'SOLEADO', windy: 'VIENTO', 'windy-variant': 'VIENTO' },
@@ -1056,6 +1067,9 @@ const TXT = {
     apagarTodas: 'Turn all off', encenderTodas: 'Turn all on', abrirTodas: 'Open all', cerrarTodas: 'Close all', favorito: 'Favorite',
     lucesDeCuarto: (c) => `Lights · ${c}`, persianasCasa: 'Home blinds', persianasDeCuarto: (c) => `Blinds · ${c}`,
     abrirLuces: 'Open lights', abrirPersianas: 'Open blinds', abrirEscenas: 'Open scenes', escenasN: (n) => `${n}`,
+    ventiladores: (n) => `${n} fans`, ventiladores2: 'Fans', ventiladoresDe: (on, n) => (on === 0 ? 'All off' : on === n ? 'All on' : `${on} of ${n} on`),
+    ventiladoresCasa: 'Home fans', ventiladoresDeCuarto: (c) => `Fans · ${c}`, abrirVentiladores: 'Open fans', apagarTodos: 'Turn all off', encenderTodos: 'Turn all on',
+    velocidad: 'Speed', velDe: (v, n) => `Speed ${v} of ${n}`, oscilacion: 'Oscillation', encendidoV: 'On',
     aires: (n) => `${n} A/C units`, encendidosN: (n) => `${n} on`, apagadosMin: 'off', adentro: (t) => `${t}° inside`,
     airesCasa: 'Home A/C', airesDe: (c) => `A/C · ${c}`, abrirAires: 'Open A/C', abrirCamaras: 'Open cameras', camarasLat: (n) => `Cameras · ${n} online`,
     clima: { 'clear-night': 'CLEAR', cloudy: 'CLOUDY', exceptional: 'EXCEPTIONAL', fog: 'FOG', hail: 'HAIL', lightning: 'STORM', 'lightning-rainy': 'STORM', partlycloudy: 'PARTLY CLOUDY', pouring: 'POURING', rainy: 'RAIN', snowy: 'SNOW', 'snowy-rainy': 'SLEET', sunny: 'SUNNY', windy: 'WINDY', 'windy-variant': 'WINDY' },
@@ -1086,6 +1100,7 @@ const ICONOS = {
   encendido: 'M12 2v10 M18.4 6.6a9 9 0 1 1-12.77.04',
   estrella: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z',
   rayo: 'M13 2 4 14h7l-1 8 9-12h-7l1-8Z',
+  ventilador: 'M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M12 10c0-3 1-7 4-7s2 4-2 7 M14 12c3 0 7 1 7 4s-4 2-7-2 M12 14c0 3-1 7-4 7s-2-4 2-7 M10 12c-3 0-7-1-7-4s4-2 7 2',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -1164,6 +1179,81 @@ const camaraConVideo = (estado) => (Number(estado?.attributes?.supported_feature
 
 // ------------------------------------------------------------------ modelo (sin DOM: se prueba en Node)
 
+// PANEL-11: ventiladores (`fan.`). Solo el panel: src/tipos.mjs (la lista de la TV del huésped) no los conoce.
+const FAN_VELOCIDAD = 1, FAN_OSCILAR = 2; // FanEntityFeature
+const tieneBit = (a, b) => (Number(a?.supported_features) & b) === b;
+// Cuántos botones de velocidad: los pasos de HA (100 / percentage_step) si son de 2 a 10; con pasos muy finos
+// (de 1 en 1) se dan 4; sin velocidad (o un solo paso), 0.
+function pasosVentilador(atributos) {
+  if (!tieneBit(atributos, FAN_VELOCIDAD)) return 0;
+  const paso = num(atributos?.percentage_step);
+  if (paso === null || paso <= 0) return 4;
+  const n = Math.round(100 / paso);
+  return n < 2 ? 0 : n > 10 ? 4 : n;
+}
+const TIPOS_PANEL = Object.freeze({
+  ventilador: Object.freeze({
+    dominios: Object.freeze(['fan']),
+    capacidadesDe(_dominio, atributos) {
+      const caps = ['encender', 'apagar'];
+      if (pasosVentilador(atributos)) caps.push('velocidad');
+      if (tieneBit(atributos, FAN_OSCILAR)) caps.push('oscilar');
+      return caps;
+    },
+    estadoDe(_dominio, e) {
+      const a = e.attributes || {};
+      const salida = { encendido: e.state === 'on' };
+      const p = num(a.percentage);
+      if (p !== null) salida.porcentaje = Math.max(0, Math.min(100, Math.round(p)));
+      const n = pasosVentilador(a);
+      if (n) {
+        salida.pasos = n;
+        salida.nivel = salida.encendido && p !== null && p > 0 ? Math.max(1, Math.min(n, Math.round((p * n) / 100))) : 0;
+      }
+      if (typeof a.oscillating === 'boolean') salida.oscilando = a.oscillating;
+      return salida;
+    },
+    acciones: Object.freeze({
+      encender: Object.freeze({ validar: () => true, servicio: () => ({ dominio: 'fan', servicio: 'turn_on', datos: {} }) }),
+      apagar: Object.freeze({ validar: () => true, servicio: () => ({ dominio: 'fan', servicio: 'turn_off', datos: {} }) }),
+      velocidad: Object.freeze({
+        validar: ({ porcentaje }) => Number.isInteger(porcentaje) && porcentaje >= 1 && porcentaje <= 100,
+        servicio: (_d, { porcentaje }) => ({ dominio: 'fan', servicio: 'set_percentage', datos: { percentage: porcentaje } }),
+      }),
+      oscilar: Object.freeze({
+        validar: ({ valor }) => typeof valor === 'boolean',
+        servicio: (_d, { valor }) => ({ dominio: 'fan', servicio: 'oscillate', datos: { oscillating: valor } }),
+      }),
+    }),
+  }),
+});
+// El tipo de un dispositivo: el de la lista de la TV o, si no, el propio del panel.
+const tipoDe = (tipo) => (Object.hasOwn(TIPOS, tipo) ? TIPOS[tipo] : Object.hasOwn(TIPOS_PANEL, tipo) ? TIPOS_PANEL[tipo] : null);
+
+// PANEL-11: los ventiladores con una etiqueta (en la entidad, o en su dispositivo si la entidad es normal:
+// no de configuración, oculta ni deshabilitada). Mismas reglas que src/descubrir.mjs para luces y aires.
+function ventiladoresEtiquetados({ etiquetas = [], dispositivos = [], entidades = [], estados = [] }, nombreEtiqueta) {
+  const norm = (x) => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const objetivo = norm(nombreEtiqueta);
+  const marcas = new Set(objetivo ? etiquetas.filter((l) => norm(l.name) === objetivo).map((l) => l.label_id) : []);
+  if (!marcas.size) return [];
+  const tiene = (x) => Array.isArray(x?.labels) && x.labels.some((l) => marcas.has(l));
+  const aparatos = new Map(dispositivos.map((d) => [d.id, d]));
+  const amigable = new Map(estados.map((x) => [x.entity_id, x.attributes?.friendly_name]));
+  return entidades
+    .filter((e) => typeof e?.entity_id === 'string' && /^fan\.[a-z0-9_]+$/.test(e.entity_id) && !e.disabled_by)
+    .filter((e) => {
+      if (tiene(e)) return true;
+      const ap = e.device_id ? aparatos.get(e.device_id) : null;
+      return !!ap && tiene(ap) && !ap.disabled_by && !e.entity_category && !e.hidden_by;
+    })
+    .sort((a, b) => (a.entity_id < b.entity_id ? -1 : 1))
+    .map((e) => {
+      const es = String(amigable.get(e.entity_id) || e.name || e.original_name || e.entity_id.split('.')[1].replace(/_/g, ' ')).trim().replace(/\s+/g, ' ');
+      return { id: `ventilador-${e.entity_id.split('.')[1].replace(/_+/g, '-')}`, tipo: 'ventilador', entidad: e.entity_id, nombre: { es, en: traducirNombre(es, { tipo: 'ventilador' }) || es } };
+    });
+}
+
 // PANEL-08: las automatizaciones con una etiqueta, como «escenas» del panel (un botón que la corre).
 // Solo el panel: src/descubrir.mjs (la TV del huésped) no conoce `automation.`.
 function rutinasEtiquetadas({ etiquetas = [], entidades = [], estados = [] }, nombreEtiqueta, idioma = 'es') {
@@ -1184,14 +1274,26 @@ function rutinasEtiquetadas({ etiquetas = [], entidades = [], estados = [] }, no
 // Registros de Home Assistant + estados → cuartos con sus dispositivos, y escenas.
 function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas = [], estados = {}, etiqueta = ETIQUETA_PANEL, etiquetaInicio = ETIQUETA_INICIO, etiquetaFavorito = ETIQUETA_FAVORITO, idioma = 'es' }) {
   const registro = { etiquetas, dispositivos, entidades, estados: Object.values(estados) };
-  // PANEL-08: las automatizaciones con la etiqueta del panel van como escenas (botón que la corre).
-  const lista = [...dispositivosEtiquetados(registro, etiqueta).dispositivos, ...rutinasEtiquetadas(registro, etiqueta, idioma)];
-  // Accesos rápidos de Casa: lo que tenga la etiqueta de inicio (con o sin la del panel).
-  const deInicio = etiquetaInicio ? [...dispositivosEtiquetados(registro, etiquetaInicio).dispositivos, ...rutinasEtiquetadas(registro, etiquetaInicio, idioma)] : [];
-  // PANEL-08: las luces y persianas con la etiqueta de favoritos salen también sueltas en la fila del cuarto.
-  const favoritos = new Set(etiquetaFavorito ? dispositivosEtiquetados(registro, etiquetaFavorito).dispositivos.map((d) => d.entidad) : []);
   const ent = new Map(entidades.map((e) => [e.entity_id, e]));
   const apar = new Map(dispositivos.map((d) => [d.id, d]));
+  // PANEL-11: los ventiladores (solo el panel). Un apagador que HA muestra como ventilador («Mostrar como»,
+  // switch_as_x) queda oculto por esa integración y su ventilador toma su aparato (o, sin aparato, su nombre):
+  // si ese ventilador sale en el panel, el apagador ya no sale también como luz.
+  const vents = ventiladoresEtiquetados(registro, etiqueta);
+  const ventsInicio = etiquetaInicio ? ventiladoresEtiquetados(registro, etiquetaInicio) : [];
+  const envolventes = [...vents, ...ventsInicio].map((d) => ent.get(d.entidad)).filter((f) => f && f.platform === 'switch_as_x');
+  const envuelto = (d) => {
+    if (d.tipo !== 'luz' || !d.entidad.startsWith('switch.')) return false;
+    const e = ent.get(d.entidad);
+    if (!e || e.hidden_by !== 'integration') return false;
+    return envolventes.some((f) => (e.device_id ? f.device_id === e.device_id : !f.device_id && !!f.original_name && f.original_name === e.original_name));
+  };
+  // PANEL-08: las automatizaciones con la etiqueta del panel van como escenas (botón que la corre).
+  const lista = [...dispositivosEtiquetados(registro, etiqueta).dispositivos.filter((d) => !envuelto(d)), ...vents, ...rutinasEtiquetadas(registro, etiqueta, idioma)];
+  // Accesos rápidos de Casa: lo que tenga la etiqueta de inicio (con o sin la del panel).
+  const deInicio = etiquetaInicio ? [...dispositivosEtiquetados(registro, etiquetaInicio).dispositivos.filter((d) => !envuelto(d)), ...ventsInicio, ...rutinasEtiquetadas(registro, etiquetaInicio, idioma)] : [];
+  // PANEL-08: las luces y persianas con la etiqueta de favoritos salen también sueltas en la fila del cuarto (PANEL-11: y los ventiladores).
+  const favoritos = new Set(etiquetaFavorito ? [...dispositivosEtiquetados(registro, etiquetaFavorito).dispositivos, ...ventiladoresEtiquetados(registro, etiquetaFavorito)].map((d) => d.entidad) : []);
   const areaDe = (entidad) => {
     const e = ent.get(entidad);
     if (!e) return null;
@@ -1236,6 +1338,8 @@ function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas 
   const aires = [...lista, ...deInicio].filter((d) => d.tipo === 'clima' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
   // PANEL-08: todas las persianas de la casa (las del panel y las de inicio), una vez cada una.
   const persianas = [...lista, ...deInicio].filter((d) => d.tipo === 'cortina' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
+  // PANEL-11: todos los ventiladores de la casa (los del panel y los de inicio), una vez cada uno.
+  const ventiladores = [...lista, ...deInicio].filter((d) => d.tipo === 'ventilador' && (vistas.has(d.entidad) ? false : vistas.add(d.entidad))).sort(porNombre);
   // PANEL-08: las escenas por cuarto (área de HA), en el orden de los cuartos; las sin cuarto, al final.
   const gruposEscenas = [];
   for (const c of cuartos) {
@@ -1252,7 +1356,7 @@ function armarModelo({ etiquetas = [], dispositivos = [], entidades = [], areas 
   if (sueltas.length) gruposEscenas.push({ id: CASA, nombre: TXT[idioma].todaLaCasa, escenas: sueltas });
   const camaras = camarasEtiquetadas({ etiquetas, dispositivos, entidades, areas, estados }, etiqueta, idioma);
   const total = new Set([...lista, ...deInicio].map((d) => d.entidad)).size + camaras.length;
-  return { cuartos, escenas, gruposEscenas, accesos, bocinas, aires, persianas, favoritos, camaras, total };
+  return { cuartos, escenas, gruposEscenas, accesos, bocinas, aires, persianas, ventiladores, favoritos, camaras, total };
 }
 
 // Qué hace un toque sobre la ficha (o null si el aparato no lo permite).
@@ -1261,6 +1365,7 @@ function accionDeToque(tipo, estado, caps) {
   if (tipo === 'luz') a = estado.encendida ? 'apagar' : 'encender';
   else if (tipo === 'cortina') a = estado.movimiento !== 'quieta' ? 'detener' : estado.abierta ? 'cerrar' : 'abrir';
   else if (tipo === 'clima') a = estado.encendido ? 'apagar' : 'encender';
+  else if (tipo === 'ventilador') a = estado.encendido ? 'apagar' : 'encender';
   else if (tipo === 'bocina') a = estado.estado === 'sonando' ? 'pausar' : 'reproducir';
   else if (tipo === 'escena') a = 'activar';
   return a && caps.includes(a) ? a : null;
@@ -1273,7 +1378,7 @@ function fichaDe(d, estados, idioma = 'es') {
   const nombre = d.nombre?.[idioma] || d.nombre?.es || d.entidad;
   const base = { id: d.id, entidad: d.entidad, tipo: d.tipo, nombre, icono: iconoDe(d), on: false, pct: null, accion: null, disponible: false, sub: T.noDisp };
   const e = estados[d.entidad];
-  const t = TIPOS[d.tipo];
+  const t = tipoDe(d.tipo);
   if (!t || !e || noDisponibleDe(d.tipo).includes(e.state)) return base;
   const extras = {};
   for (const [k, id] of Object.entries(d.extras || {})) if (estados[id]) extras[k] = estados[id];
@@ -1297,6 +1402,10 @@ function fichaDe(d, estados, idioma = 'es') {
       const verbo = T.climaVerbo[est.accion] || T.climaVerbo[est.modo] || T.espera;
       f.sub = grados(est.temperatura) !== null ? `${verbo} ${T.a} ${grados(est.temperatura)}°` : verbo;
     }
+  } else if (d.tipo === 'ventilador') {
+    f.on = est.encendido;
+    f.sub = !est.encendido ? T.apagado : est.pasos && est.nivel ? T.velDe(est.nivel, est.pasos) : T.encendidoV;
+    if (est.encendido && est.pasos && num(est.porcentaje) !== null) f.pct = est.porcentaje;
   } else if (d.tipo === 'bocina') {
     f.on = est.estado === 'sonando';
     f.sub = est.estado === 'sonando' ? est.titulo || T.sonando : est.estado === 'pausa' ? T.pausa : T.sinMusica;
@@ -1311,7 +1420,7 @@ function fichaDe(d, estados, idioma = 'es') {
 function ordenDe(d, accion) {
   // PANEL-08: una automatización se CORRE (trigger); su turn_on la habilitaría, que no es lo mismo.
   if (d.tipo === 'escena' && d.entidad.startsWith('automation.')) return accion === 'activar' ? { dominio: 'automation', servicio: 'trigger', datos: { entity_id: d.entidad } } : null;
-  const t = TIPOS[d.tipo];
+  const t = tipoDe(d.tipo);
   const a = t?.acciones?.[accion];
   if (!a) return null;
   const dominio = d.entidad.split('.')[0];
@@ -1337,7 +1446,7 @@ const modosDe = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string'
 // PANEL-08: lo que un aparato permite (lista blanca de src/tipos.mjs), o [] si está caído.
 function capsDe(d, estados) {
   const e = estados[d.entidad];
-  const t = TIPOS[d.tipo];
+  const t = tipoDe(d.tipo);
   if (!t || !e || noDisponibleDe(d.tipo).includes(e.state)) return [];
   const extras = {};
   for (const [k, id] of Object.entries(d.extras || {})) if (estados[id]) extras[k] = estados[id];
@@ -1346,7 +1455,7 @@ function capsDe(d, estados) {
 
 function controlesDe(d, estados) {
   const e = estados[d.entidad];
-  const t = TIPOS[d.tipo];
+  const t = tipoDe(d.tipo);
   if (!t || !e || noDisponibleDe(d.tipo).includes(e.state)) return null;
   const dominio = d.entidad.split('.')[0];
   const a = e.attributes || {};
@@ -1386,13 +1495,35 @@ function ordenControl(d, estados, control, valor) {
     const acc = estados[d.entidad]?.state === 'on' ? 'apagar' : 'encender';
     return capsDe(d, estados).includes(acc) ? ordenDe(d, acc) : null;
   }
+  // PANEL-11: ventilador (no tiene ventana): encender/apagar, velocidad (el número del botón) y oscilación.
+  if (d.tipo === 'ventilador') {
+    const e = estados[d.entidad];
+    const caps = capsDe(d, estados);
+    if (!e || !caps.length) return null;
+    const a = e.attributes || {};
+    const ac = TIPOS_PANEL.ventilador.acciones;
+    const propio = (srv) => ({ dominio: srv.dominio, servicio: srv.servicio, datos: { ...srv.datos, entity_id: d.entidad } });
+    if (control === 'onoff') {
+      const acc = e.state === 'on' ? 'apagar' : 'encender';
+      return caps.includes(acc) ? propio(ac[acc].servicio()) : null;
+    }
+    if (control === 'velocidad') {
+      const n = pasosVentilador(a);
+      const v = Number(valor);
+      if (!caps.includes('velocidad') || !Number.isInteger(v) || v < 1 || v > n) return null;
+      const p = { porcentaje: Math.round((v * 100) / n) };
+      return ac.velocidad.validar(p) ? propio(ac.velocidad.servicio(null, p)) : null;
+    }
+    if (control === 'oscilar') return caps.includes('oscilar') && e.state === 'on' ? propio(ac.oscilar.servicio(null, { valor: a.oscillating !== true })) : null;
+    return null;
+  }
   const c = controlesDe(d, estados);
   if (!c) return null;
   const e = estados[d.entidad];
   const a = e.attributes || {};
   const dominio = d.entidad.split('.')[0];
   const de = (accion, p = {}) => {
-    const ac = TIPOS[d.tipo].acciones[accion];
+    const ac = tipoDe(d.tipo).acciones[accion];
     if (!ac || !c.caps.includes(accion) || !ac.validar(p) || (ac.validarEstado && !ac.validarEstado(e, p))) return null;
     const s = ac.servicio(dominio, p);
     const objetivo = ac.objetivo ? d.extras?.[ac.objetivo] : d.entidad;
@@ -1743,6 +1874,18 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .chip.pers .et{color:rgba(225,240,248,0.9)}
 .chip.escs{background:rgba(70,52,110,0.9);border:1px solid #AFA9EC}
 .chip.escs svg{stroke:#CECBF6}
+.chip.vent{cursor:pointer;color:#FFFFFF;background:rgba(78,60,38,0.9);border:1px solid #D9B48A;-webkit-user-select:none;user-select:none}
+.chip.vent.quieto{background:rgba(78,60,38,0.5);border-color:rgba(217,180,138,0.45)}
+.chip.vent svg{stroke:#F2D6B3}
+.chip.vent .et{color:rgba(250,238,222,0.9)}
+.grupo.vent .g-nom svg{stroke:#F2D6B3}
+.grupo.vent .g-seg i.on{background:#F2D6B3}
+.vt-vel .clm-modo{background:#4A3A28}
+.vt-vel .clm-modo.sel{background:#FFFFFF;color:#633806}
+.vt-osc{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:rgba(255,255,255,0.85)}
+.clm.vt:not(.quieta):not(.nodisp){background:#3A2C1E;border-color:#D9B48A}
+.clm.vt:not(.quieta):not(.nodisp) .clm-ic{background:#5A4128;color:#F2D6B3}
+.clm.vt:not(.quieta):not(.nodisp) .clm-sub{color:#E8C9A4}
 .chip.escs .et{color:rgba(238,237,254,0.9)}
 @media (orientation: portrait){.fila .grupo{grid-column:span 2;width:auto;height:140px}}
 @media (max-width: 960px){.tabs{order:4;flex-basis:100%;margin:0}}
@@ -1951,6 +2094,8 @@ function htmlLateral(tipo, titulo, cuerpo, idioma, pie = '', arriba = '') {
 // Las luces que se juntan en la tarjeta «Luces»: solo `light.` (los apagadores y enchufes van sueltos).
 const lucesDe = (c) => (c?.dispositivos || []).filter((d) => d.tipo === 'luz' && d.entidad.startsWith('light.'));
 const persianasDe = (c) => (c?.dispositivos || []).filter((d) => d.tipo === 'cortina');
+// PANEL-11: los ventiladores de un cuarto.
+const ventiladoresDe = (c) => (c?.dispositivos || []).filter((d) => d.tipo === 'ventilador');
 
 // La tarjeta ancha de un grupo (tipo 'luces' o 'persianas') de un cuarto (o de la casa).
 function htmlGrupo(tipo, grupoId, lista, estados, idioma, abierta) {
@@ -1959,22 +2104,26 @@ function htmlGrupo(tipo, grupoId, lista, estados, idioma, abierta) {
   const vivas = fichas.filter((f) => f.disponible);
   const on = vivas.filter((f) => f.on).length;
   const luz = tipo === 'luces';
-  const titulo = luz ? T.luces2 : T.persianas;
-  const sub = vivas.length ? (luz ? T.lucesDe(on, vivas.length) : T.persianasDe(on, vivas.length)) : T.noDisp;
+  const vent = tipo === 'ventiladores';
+  const titulo = luz ? T.luces2 : vent ? T.ventiladores2 : T.persianas;
+  const sub = vivas.length ? (luz ? T.lucesDe(on, vivas.length) : vent ? T.ventiladoresDe(on, vivas.length) : T.persianasDe(on, vivas.length)) : T.noDisp;
   const seg = fichas.map((f) => `<i class="${f.disponible ? (f.on ? 'on' : 'off') : 'nd'}"></i>`).join('');
   const id = esc(grupoId);
   const boton = (accion, icono, etiqueta, extra = '') => `<button class="g-btn${extra}" data-todas="${accion}" data-cual="${tipo}" data-grupo-id="${id}" aria-label="${esc(etiqueta)}"${vivas.length ? '' : ' disabled'}>${svg(icono, 20)}</button>`;
   const botones = luz
     ? boton(on ? 'apagar' : 'encender', ICONOS.encendido, on ? T.apagarTodas : T.encenderTodas, on ? ' on' : '')
-    : `${boton('abrir', ICONOS.arriba, T.abrirTodas)}${boton('cerrar', ICONOS.abajo, T.cerrarTodas)}`;
-  return `<div class="grupo vidrio${on ? ' on' : ''}${luz ? '' : ' pers'}" data-grupo="${tipo}" data-grupo-id="${id}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${luz ? T.abrirLuces : T.abrirPersianas}: ${sub}`)}"><div class="g-cab"><span class="g-tx"><span class="g-nom">${svg(luz ? ICONOS.light : ICONOS.cortina, 20)}<span>${esc(titulo)}</span></span><span class="g-sub">${esc(sub)}</span></span><span class="g-btns">${botones}</span></div><div class="g-seg">${seg}</div></div>`;
+    : vent
+      ? boton(on ? 'apagar' : 'encender', ICONOS.encendido, on ? T.apagarTodos : T.encenderTodos, on ? ' on' : '')
+      : `${boton('abrir', ICONOS.arriba, T.abrirTodas)}${boton('cerrar', ICONOS.abajo, T.cerrarTodas)}`;
+  return `<div class="grupo vidrio${on ? ' on' : ''}${luz ? '' : vent ? ' vent' : ' pers'}" data-grupo="${tipo}" data-grupo-id="${id}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${luz ? T.abrirLuces : vent ? T.abrirVentiladores : T.abrirPersianas}: ${sub}`)}"><div class="g-cab"><span class="g-tx"><span class="g-nom">${svg(luz ? ICONOS.light : vent ? ICONOS.ventilador : ICONOS.cortina, 20)}<span>${esc(titulo)}</span></span><span class="g-sub">${esc(sub)}</span></span><span class="g-btns">${botones}</span></div><div class="g-seg">${seg}</div></div>`;
 }
 
 // Los botones «todas» de arriba del panel lateral de luces o persianas.
 function htmlAccionesTodas(tipo, grupoId, idioma) {
   const T = TXT[idioma];
   const b = (accion, texto) => `<button class="btn-lat" data-todas="${accion}" data-cual="${tipo}" data-grupo-id="${esc(grupoId)}">${esc(texto)}</button>`;
-  return `<div class="lat-acc">${tipo === 'luces' ? b('apagar', T.apagarTodas) + b('encender', T.encenderTodas) : b('abrir', T.abrirTodas) + b('cerrar', T.cerrarTodas)}</div>`;
+  const botones = tipo === 'luces' ? b('apagar', T.apagarTodas) + b('encender', T.encenderTodas) : tipo === 'ventiladores' ? b('apagar', T.apagarTodos) + b('encender', T.encenderTodos) : b('abrir', T.abrirTodas) + b('cerrar', T.cerrarTodas);
+  return `<div class="lat-acc">${botones}</div>`;
 }
 
 // Un renglón del panel lateral: una luz (interruptor y brillo) o una persiana (▲ ■ ▼).
@@ -2088,6 +2237,52 @@ function htmlAire(d, estados, idioma, lugar) {
     cuerpo += `<div class="clm-modos">${c.modos.map((m) => `<button class="clm-modo${e.state === m ? ' sel' : ''}" data-control="modo" data-valor="${esc(m)}" data-entidad="${ent}" aria-pressed="${e.state === m ? 'true' : 'false'}">${esc(T.modos[m] || bonito(m))}</button>`).join('')}</div>`;
   }
   return `<div class="${clases.join(' ')}" data-clima="${ent}"><div class="clm-cab"><span class="clm-ic">${icono(d.entidad, ICONOS.clima, 22)}</span><span class="clm-tx"><span class="clm-nom">${esc(f.nombre)}</span><span class="clm-sub">${esc(sub)}</span></span>${onoff}</div>${cuerpo}</div>`;
+}
+
+// ------------------------------------------------------------------ PANEL-11: ventiladores (chip + panel lateral)
+
+// Lo que dice el chip de ventiladores: con uno, su nombre y su estado; con varios, cuántos encendidos.
+function resumenVentiladores(lista, estados, idioma = 'es') {
+  const T = TXT[idioma];
+  const fichas = lista.map((d) => fichaDe(d, estados, idioma));
+  const encendidos = fichas.filter((f) => f.disponible && f.on).length;
+  if (fichas.length === 1) return { nombre: fichas[0].nombre, estado: fichas[0].disponible ? fichas[0].sub : T.noDisp, encendidos };
+  const algunoVivo = fichas.some((f) => f.disponible);
+  return { nombre: T.ventiladores(fichas.length), estado: encendidos ? T.encendidosN(encendidos) : algunoVivo ? T.apagadosMin : T.sinConexionMin, encendidos };
+}
+
+function htmlChipVentiladores(grupo, lista, estados, idioma, abierta) {
+  const T = TXT[idioma];
+  const r = resumenVentiladores(lista, estados, idioma);
+  return `<button class="chip vidrio vent${r.encendidos ? '' : ' quieto'}" data-ventiladores="${esc(grupo)}" aria-haspopup="dialog" aria-expanded="${abierta ? 'true' : 'false'}" aria-label="${esc(`${T.abrirVentiladores}: ${r.nombre} · ${r.estado}`)}">${svg(ICONOS.ventilador, 18)}<span class="va">${esc(r.nombre)}</span><span class="et">${esc(r.estado)}</span>${svg(ICONOS.derecha, 16)}</button>`;
+}
+
+// Una tarjeta de ventilador del panel lateral: encender/apagar, un botón por velocidad y la oscilación.
+function htmlVentilador(d, estados, idioma, lugar) {
+  const T = TXT[idioma];
+  const f = fichaDe(d, estados, idioma);
+  const caps = capsDe(d, estados);
+  const est = f.estado || {};
+  const prendido = f.disponible && f.on;
+  const sub = [lugar, f.disponible ? f.sub : T.sinConexion].filter(Boolean).join(' · ');
+  const clases = ['clm', 'vt'];
+  if (!f.disponible) clases.push('nodisp');
+  else if (!prendido) clases.push('quieta');
+  const ent = esc(d.entidad);
+  const puedeOnOff = caps.includes(prendido ? 'apagar' : 'encender');
+  const onoff = `<button class="clm-pw${prendido ? ' on' : ''}" data-control="onoff" data-valor="" data-entidad="${ent}" aria-pressed="${prendido ? 'true' : 'false'}" aria-label="${esc(prendido ? T.apagar : T.encender)}"${puedeOnOff ? '' : ' disabled'}>${svg(ICONOS.encendido, 22)}</button>`;
+  let cuerpo = '';
+  if (caps.includes('velocidad') && est.pasos) {
+    const botones = Array.from({ length: est.pasos }, (_, i) => i + 1)
+      .map((k) => `<button class="clm-modo${est.nivel === k ? ' sel' : ''}" data-control="velocidad" data-valor="${k}" data-entidad="${ent}" aria-pressed="${est.nivel === k ? 'true' : 'false'}" aria-label="${esc(`${T.velocidad} ${k}`)}">${k}</button>`)
+      .join('');
+    cuerpo += `<div class="clm-modos vt-vel" role="group" aria-label="${esc(T.velocidad)}">${botones}</div>`;
+  }
+  if (caps.includes('oscilar')) {
+    const osc = prendido && est.oscilando === true;
+    cuerpo += `<div class="vt-osc"><span>${esc(T.oscilacion)}</span><button class="lz-tg${osc ? ' on' : ''}" role="switch" aria-checked="${osc ? 'true' : 'false'}" data-control="oscilar" data-valor="" data-entidad="${ent}" aria-label="${esc(T.oscilacion)}"${prendido ? '' : ' disabled'}><i></i></button></div>`;
+  }
+  return `<div class="${clases.join(' ')}" data-clima="${ent}"><div class="clm-cab"><span class="clm-ic">${icono(d.entidad, ICONOS.ventilador, 22)}</span><span class="clm-tx"><span class="clm-nom">${esc(f.nombre)}</span><span class="clm-sub">${esc(sub)}</span></span>${onoff}</div>${cuerpo}</div>`;
 }
 
 // ------------------------------------------------------------------ PANEL-07: cámaras (chip de Casa + panel lateral)
@@ -2241,6 +2436,9 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     // PANEL-07: el chip de aires (con la temperatura de adentro) sustituye al chip «Interior».
     const aires = modelo.aires || [];
     if (aires.length) chips.push(htmlChipAires(CASA, aires, estados, idioma, abierto('aire', CASA)));
+    // PANEL-11: el chip de ventiladores abre el panel con todos los ventiladores de la casa.
+    const ventiladores = modelo.ventiladores || [];
+    if (ventiladores.length) chips.push(htmlChipVentiladores(CASA, ventiladores, estados, idioma, abierto('ventiladores', CASA)));
     // PANEL-06: el chip de audio abre el panel lateral con todas las bocinas de la casa.
     const bocinas = modelo.bocinas || [];
     if (bocinas.length) chips.push(htmlChipAudio(CASA, bocinas, estados, idioma, abierto('audio', CASA)));
@@ -2266,6 +2464,9 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const aires = airesDe(cuartoSel);
     const cs = [];
     if (aires.length) cs.push(htmlChipAires(cuartoSel.id, aires, estados, idioma, abierto('aire', cuartoSel.id)));
+    // PANEL-11: el chip de ventiladores del cuarto.
+    const ventG = ventiladoresDe(cuartoSel);
+    if (ventG.length) cs.push(htmlChipVentiladores(cuartoSel.id, ventG, estados, idioma, abierto('ventiladores', cuartoSel.id)));
     if (bocinas.length) cs.push(htmlChipAudio(cuartoSel.id, bocinas, estados, idioma, abierto('audio', cuartoSel.id)));
     const chip = cs.length ? `<div class="chips">${cs.join('')}</div>` : '';
     centro = `<div class="sobre">${esc(enc.sobre)}</div><div class="titulo">${esc(cuartoSel.nombre)}</div><div class="sub">${esc(enc.sub)}</div>${chip}`;
@@ -2275,12 +2476,15 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     const persG = persianasDe(cuartoSel);
     const juntaL = lucesG.length >= 2;
     const juntaP = persG.length >= 2;
+    const juntaV = ventG.length >= 2;
     const piezas = [];
     let pusoL = false;
     let pusoP = false;
+    let pusoV = false;
     cuartoSel.dispositivos.forEach((d, i) => {
       const enL = juntaL && lucesG.includes(d);
       const enP = juntaP && persG.includes(d);
+      const enV = juntaV && ventG.includes(d);
       if (enL && !pusoL) {
         piezas.push(htmlGrupo('luces', cuartoSel.id, lucesG, estados, idioma, abierto('luces', cuartoSel.id)));
         pusoL = true;
@@ -2289,11 +2493,15 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
         piezas.push(htmlGrupo('persianas', cuartoSel.id, persG, estados, idioma, abierto('persianas', cuartoSel.id)));
         pusoP = true;
       }
-      if ((enL || enP) && !favs.has(d.entidad)) return;
-      piezas.push(htmlFicha(fichas[i], { ...opc(fichas[i]), favorito: (enL || enP) && favs.has(d.entidad) }));
+      if (enV && !pusoV) {
+        piezas.push(htmlGrupo('ventiladores', cuartoSel.id, ventG, estados, idioma, abierto('ventiladores', cuartoSel.id)));
+        pusoV = true;
+      }
+      if ((enL || enP || enV) && !favs.has(d.entidad)) return;
+      piezas.push(htmlFicha(fichas[i], { ...opc(fichas[i]), favorito: (enL || enP || enV) && favs.has(d.entidad) }));
     });
     const html = piezas.join('');
-    const puntos = piezas.length + (pusoL ? 1 : 0) + (pusoP ? 1 : 0) > 6 ? '<div class="puntos der" aria-hidden="true"><span></span><span></span></div>' : '';
+    const puntos = piezas.length + (pusoL ? 1 : 0) + (pusoP ? 1 : 0) + (pusoV ? 1 : 0) > 6 ? '<div class="puntos der" aria-hidden="true"><span></span><span></span></div>' : '';
     if (piezas.length) abajo = `<div class="abajo"><div class="fila der" data-fila="${esc(cuartoSel.id)}">${html}</div>${puntos}</div>`;
   }
   const aviso = vista.aviso ? `<div class="aviso" role="status">${esc(vista.aviso)}</div>` : '';
@@ -2307,6 +2515,11 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
       const titulo = grupo.tipo === 'luces' ? T.lucesDeCuarto(grupo.nombre) : grupo.id === CASA ? T.persianasCasa : T.persianasDeCuarto(grupo.nombre);
       const cuerpo = grupo.lista.map((d) => htmlRenglon(d, estados, idioma, vista, { favorito: favs.has(d.entidad), lugar: lugarDe(d) })).join('');
       audio = htmlLateral(grupo.tipo, titulo, cuerpo, idioma, '', htmlAccionesTodas(grupo.tipo, grupo.id, idioma));
+    } else if (grupo.tipo === 'ventiladores') {
+      // PANEL-11: una tarjeta por ventilador; con 2 o más, arriba «Apagar todos» / «Encender todos».
+      const titulo = grupo.id === CASA ? T.ventiladoresCasa : T.ventiladoresDeCuarto(grupo.nombre);
+      const arriba = grupo.lista.length >= 2 ? htmlAccionesTodas('ventiladores', grupo.id, idioma) : '';
+      audio = htmlLateral('ventiladores', titulo, grupo.lista.map((d) => htmlVentilador(d, estados, idioma, lugarDe(d))).join(''), idioma, '', arriba);
     } else if (grupo.tipo === 'escenas') {
       const pie = `<button class="btn-cam" data-ir-escenas="1">${svg(ICONOS.rejilla, 18)}<span>${esc(T.verTodas)}</span></button>`;
       audio = htmlLateral('escenas', T.escenas, htmlGruposEscenas(modelo.gruposEscenas || [], estados, opc, idioma, true), idioma, pie);
@@ -2362,6 +2575,12 @@ function grupoLateral(modelo, lateral) {
     if (grupo === CASA) return tipo === 'persianas' ? de(modelo.persianas || [], null) : null;
     const c = (modelo.cuartos || []).find((x) => x.id === grupo);
     return c ? de(tipo === 'luces' ? lucesDe(c) : persianasDe(c), c) : null;
+  }
+  // PANEL-11: ventiladores (Casa o cuarto).
+  if (tipo === 'ventiladores') {
+    if (grupo === CASA) return de(modelo.ventiladores || [], null);
+    const c = (modelo.cuartos || []).find((x) => x.id === grupo);
+    return c ? de(ventiladoresDe(c), c) : null;
   }
   if (tipo !== 'audio' && tipo !== 'aire') return null;
   if (grupo === CASA) return de((tipo === 'audio' ? modelo.bocinas : modelo.aires) || [], null);
@@ -3008,9 +3227,11 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._irAPestana(ESCENAS);
         return;
       }
-      const chip = ev.target.closest('[data-audio], [data-aire], [data-camaras-chip], [data-persianas-chip], [data-escenas-chip], [data-grupo]');
+      const chip = ev.target.closest('[data-audio], [data-aire], [data-ventiladores], [data-camaras-chip], [data-persianas-chip], [data-escenas-chip], [data-grupo]');
       if (chip) {
-        const l = chip.dataset.audio
+        const l = chip.dataset.ventiladores
+          ? { tipo: 'ventiladores', grupo: chip.dataset.ventiladores }
+          : chip.dataset.audio
           ? { tipo: 'audio', grupo: chip.dataset.audio }
           : chip.dataset.aire
             ? { tipo: 'aire', grupo: chip.dataset.aire }
@@ -3218,6 +3439,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

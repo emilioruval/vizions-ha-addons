@@ -1,6 +1,6 @@
-// Vizions Panel 0.10.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.11.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 1c20341b82ded0bdd188e15ee35b2876
+// Huella del contenido: c8a5accef0072c26427903b2ff080e47
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -915,13 +915,21 @@ const __vp_tarjeta = (() => {
 // junta (botón para apagar/encender todos) y los favoritos salen también sueltos. Un apagador que en HA se
 // muestra como ventilador («Mostrar como → Ventilador») sale una sola vez, como ventilador.
 //
+// VIZIONS-PANEL-12 (0.11.0, mockup aprobado el 14 nov 2026): acomodo para celular. Cuando la tarjeta mide
+// menos de ANCHO_MOVIL px de ancho (un teléfono; la tablet no cambia) se marca `movil`: la foto queda como
+// franja arriba, marca/hora/pila en una línea, pestañas y chips en filas que se deslizan (la pestaña activa
+// se centra sola), fichas en dos columnas (las tarjetas anchas ocupan las dos), cámaras una por renglón, y
+// los paneles laterales y la ventana salen como hoja desde abajo (se cierran con la X, tocando afuera o
+// deslizando hacia abajo desde su asa). Misma tarjeta y mismo tablero; el kiosko sigue siendo para quien no
+// es administrador.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.10.0';
+const VERSION_PANEL = '0.11.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -1890,9 +1898,46 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 @media (orientation: portrait){.fila .grupo{grid-column:span 2;width:auto;height:140px}}
 @media (max-width: 960px){.tabs{order:4;flex-basis:100%;margin:0}}
 @media (orientation: portrait){.fila.escenas .escena{min-width:0}.fila{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));overflow:visible}.ficha{width:auto;height:140px}.puntos{display:none}}
+.asa{display:none}
+:host([movil]) .raiz{background-position:center top;background-size:auto 340px}
+:host([movil]) .sombra{background:linear-gradient(to bottom,rgba(8,10,14,0.10) 0,rgba(8,10,14,0.35) 180px,#16191D 300px,#16191D 100%)}
+:host([movil]) .capa{padding:calc(14px + var(--vp-arriba,0px)) 0 calc(20px + var(--vp-abajo,0px)) 16px;gap:12px}
+:host([movil]) .der{padding-right:16px}
+:host([movil]) .barra{gap:10px}
+:host([movil]) .marca{font-size:12px;letter-spacing:0.2em;max-width:62vw}
+:host([movil]) .hora{font-size:17px;flex-direction:row;align-items:center;gap:8px}
+:host([movil]) .tabs{order:4;flex-basis:100%;margin:0;padding:4px;border-radius:24px}
+:host([movil]) .tab{height:36px;padding:0 14px;font-size:14px;border-radius:18px}
+:host([movil]) .centro{flex:none;justify-content:flex-start;margin-top:12px}
+:host([movil]) .titulo,:host([movil]) .titulo.casa,:host([movil]) .titulo.cams{font-size:36px;margin-top:4px}
+:host([movil]) .sobre{font-size:12px;min-height:0}
+:host([movil]) .sub{font-size:14px;margin-top:6px}
+:host([movil]) .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:16px -16px 0 0;padding-right:16px}
+:host([movil]) .chips::-webkit-scrollbar{display:none}
+:host([movil]) .chip{flex:none;height:38px;padding:0 13px;font-size:13px;gap:7px}
+:host([movil]) .abajo{margin-top:6px;gap:12px}
+:host([movil]) .fila{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;overflow:visible}
+:host([movil]) .ficha{width:auto;height:112px;padding:12px 12px 10px;border-radius:18px}
+:host([movil]) .ficha .nom{font-size:15px}
+:host([movil]) .fila .grupo{grid-column:1/-1;width:auto;height:116px;padding:12px 14px}
+:host([movil]) .fila.escenas .escena{min-width:0;height:60px;padding:0 12px}
+:host([movil]) .puntos{display:none}
+:host([movil]) .rejilla{gap:12px}
+:host([movil]) .grande{border-radius:18px}
+:host([movil]) .lateral{top:auto;left:0;right:0;bottom:0;width:auto;max-height:86%;padding:8px 16px calc(16px + var(--vp-abajo,0px));border-radius:24px 24px 0 0;border-bottom:0;gap:12px}
+:host([movil]) .lista-lat{min-height:0}
+:host([movil]) .hoja{top:auto;left:0;right:0;bottom:0;transform:none;width:auto;max-width:none;max-height:86%;padding:8px 18px calc(20px + var(--vp-abajo,0px));border-radius:24px 24px 0 0;gap:18px}
+:host([movil]) .tit-hoja{font-size:20px}
+:host([movil]) .asa{display:block;flex:none;align-self:center;width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,0.35);margin:2px 0 4px;touch-action:none}
 `;
 
 // ------------------------------------------------------------------ dibujo (texto HTML; todo lo de HA va escapado)
+
+// PANEL-12: debajo de este ancho (px de la tarjeta) va el acomodo de celular.
+const ANCHO_MOVIL = 600;
+const esMovil = (ancho) => Number.isFinite(ancho) && ancho > 0 && ancho < ANCHO_MOVIL;
+// Cuánto se desliza la hoja hacia abajo para cerrarla.
+const CERRAR_DESLIZANDO = 80;
 
 // PANEL-10: el cuarto de esta tablet (`?cuarto=` o `cuarto:`) → id del cuarto, o null si no existe.
 // Vale el id del área o su nombre (sin importar mayúsculas, acentos ni espacios de más).
@@ -2020,7 +2065,7 @@ function htmlVentana(d, estados, idioma, vista, lugar) {
     pie = `<div class="pie-hoja">${listo}</div>`;
   }
   const sub = [lugar, f.sub].filter(Boolean).join(' · ');
-  return `<div class="fondo-hoja" data-cerrar="1"></div><div class="hoja" tabindex="-1" role="dialog" aria-modal="true" aria-label="${esc(f.nombre)}" data-hoja="${esc(d.entidad)}"><div class="cab-hoja"><div><div class="tit-hoja">${esc(f.nombre)}</div><div class="sub-hoja">${esc(sub)}</div></div><button class="cerrar vidrio" data-cerrar="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div>${cuerpo}${pie}</div>`;
+  return `<div class="fondo-hoja" data-cerrar="1"></div><div class="hoja" tabindex="-1" role="dialog" aria-modal="true" aria-label="${esc(f.nombre)}" data-hoja="${esc(d.entidad)}"><div class="asa" data-asa="hoja" aria-hidden="true"></div><div class="cab-hoja"><div><div class="tit-hoja">${esc(f.nombre)}</div><div class="sub-hoja">${esc(sub)}</div></div><button class="cerrar vidrio" data-cerrar="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div>${cuerpo}${pie}</div>`;
 }
 
 function htmlChip(icono, et, va) {
@@ -2086,7 +2131,7 @@ function htmlBocina(d, estados, idioma, vista) {
 // PANEL-07: un panel lateral (audio, aires o cámaras). `cuerpo` va en la lista que se desliza; `pie` abajo.
 function htmlLateral(tipo, titulo, cuerpo, idioma, pie = '', arriba = '') {
   const T = TXT[idioma];
-  return `<div class="fondo-lateral" data-cerrar-lateral="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="${esc(tipo)}"><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-lateral="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div>${arriba}<div class="lista-lat">${cuerpo}</div>${pie}</div>`;
+  return `<div class="fondo-lateral" data-cerrar-lateral="1"></div><div class="lateral" role="dialog" aria-modal="true" aria-label="${esc(titulo)}" tabindex="-1" data-lateral="${esc(tipo)}"><div class="asa" data-asa="lateral" aria-hidden="true"></div><div class="cab-lat"><span class="etiqueta">${esc(titulo)}</span><button class="cerrar" data-cerrar-lateral="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 20)}</button></div>${arriba}<div class="lista-lat">${cuerpo}</div>${pie}</div>`;
 }
 
 // ------------------------------------------------------------------ PANEL-08: luces y persianas agrupadas
@@ -2678,6 +2723,11 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this.shadowRoot.innerHTML = `<style>${CSS}</style><div id="vp"></div>`;
       const r = this.shadowRoot;
       r.addEventListener('click', (ev) => this._clic(ev));
+      // PANEL-12: en celular, la hoja (panel o ventana) se cierra deslizándola hacia abajo desde su asa o su cabecera.
+      r.addEventListener('touchstart', (ev) => this._deslizarInicio(ev), { passive: true });
+      r.addEventListener('touchmove', (ev) => this._deslizarMover(ev), { passive: true });
+      r.addEventListener('touchend', () => this._deslizarFin());
+      r.addEventListener('touchcancel', () => this._deslizarFin(true));
       // Mantener presionada una ficha abre su ventana (también clic derecho en una compu).
       r.addEventListener('pointerdown', (ev) => this._presionar(ev));
       r.addEventListener('pointermove', (ev) => this._mover(ev));
@@ -2796,6 +2846,12 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._kiosko();
       // Home Assistant termina de armar su pantalla después de conectar la tarjeta.
       this._tKiosko = setTimeout(() => this._kiosko(), 300);
+      // PANEL-12: el acomodo de celular depende del ancho de la tarjeta (no de la pantalla).
+      if (typeof ResizeObserver === 'function') {
+        this._medida = new ResizeObserver(() => this._medirAncho());
+        this._medida.observe(this);
+      }
+      this._medirAncho();
     }
 
     disconnectedCallback() {
@@ -2806,6 +2862,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       clearTimeout(this._tRecarga);
       clearTimeout(this._tKiosko);
       this._quitarKiosko();
+      if (this._medida) this._medida.disconnect();
+      this._medida = null;
       for (const u of this._unsubs) {
         try {
           u();
@@ -2988,6 +3046,57 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       }
       this._montarVivos();
       this._montarIconos();
+      this._centrarPestana();
+    }
+
+    // PANEL-12: celular o tablet según el ancho de la tarjeta.
+    _medirAncho() {
+      const movil = esMovil(this.getBoundingClientRect().width);
+      if (movil === this.hasAttribute('movil')) return;
+      this.toggleAttribute('movil', movil);
+      this._pestanaCentrada = null;
+      this._centrarPestana();
+    }
+
+    // PANEL-12: en celular la fila de pestañas se desliza; la activa se centra cuando cambia.
+    _centrarPestana() {
+      if (!this.hasAttribute('movil') || this._pestanaCentrada === this._pestana) return;
+      const tabs = this.shadowRoot && this.shadowRoot.querySelector('.tabs');
+      const activa = tabs && tabs.querySelector('.tab.activa');
+      if (!activa || !tabs.clientWidth) return;
+      const a = activa.getBoundingClientRect();
+      const t = tabs.getBoundingClientRect();
+      tabs.scrollLeft += a.left + a.width / 2 - (t.left + t.width / 2);
+      this._pestanaCentrada = this._pestana;
+    }
+
+    // PANEL-12: deslizar la hoja hacia abajo (solo celular). Empieza en el asa o en la cabecera, no en botones.
+    _deslizarInicio(ev) {
+      this._desliz = null;
+      if (!this.hasAttribute('movil') || ev.touches.length !== 1) return;
+      const t = ev.target;
+      if (!t.closest || t.closest('button, input')) return;
+      const zona = t.closest('[data-asa], .cab-lat, .cab-hoja');
+      const hoja = zona && zona.closest('.lateral, .hoja');
+      if (!hoja) return;
+      this._desliz = { hoja, tipo: hoja.classList.contains('lateral') ? 'lateral' : 'hoja', y0: ev.touches[0].clientY, dy: 0 };
+    }
+
+    _deslizarMover(ev) {
+      const d = this._desliz;
+      if (!d || !ev.touches.length) return;
+      d.dy = Math.max(0, ev.touches[0].clientY - d.y0);
+      d.hoja.style.transform = d.dy ? `translateY(${d.dy}px)` : '';
+    }
+
+    _deslizarFin(cancelado = false) {
+      const d = this._desliz;
+      this._desliz = null;
+      if (!d) return;
+      d.hoja.style.transform = '';
+      if (cancelado || d.dy < CERRAR_DESLIZANDO) return;
+      if (d.tipo === 'lateral') this._cerrarLateral();
+      else this._cerrarVentana();
     }
 
     // PANEL-10: lo pedido en la dirección manda sobre la configuración; undefined si no hay ninguno.
@@ -3439,6 +3548,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

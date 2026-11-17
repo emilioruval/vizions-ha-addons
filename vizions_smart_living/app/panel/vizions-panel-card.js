@@ -1,6 +1,6 @@
-// Vizions Panel 0.12.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.12.1 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 8db26c1d6e237a53d971927d83e7a46d
+// Huella del contenido: 9425de864b2673573432978e89fecc7a
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -931,13 +931,16 @@ const __vp_tarjeta = (() => {
 // sale dos veces (la de Music Assistant y la nativa) aparece una sola vez: la de Music Assistant. Los cuartos
 // salen en el orden de Home Assistant (Ajustes → Áreas → Reordenar), ya no por nombre.
 //
+// VIZIONS-PANEL-13b (0.12.1, pedido de Emilio el 17 nov 2026): la pestaña «Música» va justo después de «Casa»
+// (antes de los cuartos); Escenas y Cámaras siguen al final.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.12.0';
+const VERSION_PANEL = '0.12.1';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -2589,12 +2592,13 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
   // PANEL-08: pestaña «Escenas» (si hay), antes de Cámaras.
   const escenas = modelo.escenas || [];
   const enEscenas = vista.pestana === ESCENAS && escenas.length > 0;
-  // PANEL-13: pestaña «Música» (al final) si hay bocinas de Music Assistant.
+  // PANEL-13: pestaña «Música» si hay bocinas de Music Assistant (PANEL-13b: justo después de Casa).
   const musica = modelo.musica && modelo.musica.bocinas && modelo.musica.bocinas.length ? modelo.musica : null;
   const enMusica = vista.pestana === MUSICA && !!musica;
   const cuartoSel = enCamaras || enEscenas || enMusica ? null : modelo.cuartos.find((c) => c.id === vista.pestana);
   const pestana = enCamaras ? CAMARAS : enEscenas ? ESCENAS : enMusica ? MUSICA : cuartoSel ? cuartoSel.id : CASA;
-  const tabs = [{ id: CASA, nombre: T.casa }, ...modelo.cuartos.map((c) => ({ id: c.id, nombre: c.nombre })), ...(escenas.length ? [{ id: ESCENAS, nombre: T.escenas }] : []), ...(camaras.length ? [{ id: CAMARAS, nombre: T.camaras }] : []), ...(musica ? [{ id: MUSICA, nombre: T.musica }] : [])]
+  // PANEL-13b: «Música» va justo después de Casa (antes de los cuartos).
+  const tabs = [{ id: CASA, nombre: T.casa }, ...(musica ? [{ id: MUSICA, nombre: T.musica }] : []), ...modelo.cuartos.map((c) => ({ id: c.id, nombre: c.nombre })), ...(escenas.length ? [{ id: ESCENAS, nombre: T.escenas }] : []), ...(camaras.length ? [{ id: CAMARAS, nombre: T.camaras }] : [])]
     .map((t) => `<button class="tab${t.id === pestana ? ' activa' : ''}" data-tab="${esc(t.id)}"${t.id === pestana ? ' aria-current="page"' : ''}>${esc(t.nombre)}</button>`)
     .join('');
   const espera = vista.espera || new Set();

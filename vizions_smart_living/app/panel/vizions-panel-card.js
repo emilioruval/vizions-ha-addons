@@ -1,6 +1,6 @@
-// Vizions Panel 0.12.2 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.13.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 16d29aaa9256b643764c9a4ce4afa057
+// Huella del contenido: d1aabecaa3e4933e52ab385e16fc185a
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -942,13 +942,21 @@ const __vp_tarjeta = (() => {
 // Las órdenes de música ya no sacan además el aviso de Home Assistant. En «Bocinas»: «Silenciada» y botón de
 // silencio por bocina, y botón de silencio del grupo junto a «Volumen del grupo».
 //
+// VIZIONS-PANEL-14 (0.13.0, aprobado el 19 nov 2026): acceso de administración con clave. En Casa, con el
+// kiosko activo y «clave_admin» en la tarjeta (SHA-256 de «vizions-panel:» + la clave, 64 hex), un engrane
+// discreto junto a la batería abre un teclado. Con la clave correcta el kiosko se suspende 10 minutos (aparece
+// la barra lateral de Home Assistant) y en el lugar del engrane queda «Bloquear · m:ss». El kiosko regresa al
+// tocar «Bloquear», al vencer el tiempo (si está en otra página de Home Assistant, vuelve al tablero) o al
+// recargar. 5 errores seguidos = 30 s de espera. SHA-256 propio: crypto.subtle no existe en http://IP:8123.
+// Es un candado de cortesía; la protección real es que el usuario de la tablet no sea administrador.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.12.2';
+const VERSION_PANEL = '0.13.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -979,6 +987,120 @@ function quiereKiosko({ esAdmin, config, busqueda } = {}) {
   if (p === '1') return true;
   if (config === false) return false;
   return !esAdmin;
+}
+
+// ------------------------------------------------------------------ candado (PANEL-14)
+// «clave_admin» = SHA-256 (hex) de SAL_CLAVE + la clave. En la Mac:
+//   printf 'vizions-panel:%s' "$clave" | shasum -a 256
+const SAL_CLAVE = 'vizions-panel:';
+const DESBLOQUEO_MS = 10 * 60 * 1000;
+const INTENTOS_CLAVE = 5;
+const ESPERA_CLAVE_MS = 30 * 1000;
+const CLAVE_MIN = 4;
+const CLAVE_MAX = 8;
+const K256 = [
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+];
+const ror32 = (x, n) => (x >>> n) | (x << (32 - n));
+function bytesUtf8(texto) {
+  const t = String(texto);
+  if (typeof TextEncoder === 'function') return new TextEncoder().encode(t);
+  const b = unescape(encodeURIComponent(t));
+  return Uint8Array.from(b, (c) => c.charCodeAt(0));
+}
+// SHA-256 propio (crypto.subtle solo existe en páginas https y la tablet abre Home Assistant por http).
+function sha256Hex(texto) {
+  const datos = bytesUtf8(texto);
+  const largo = datos.length;
+  const total = Math.ceil((largo + 9) / 64) * 64;
+  const m = new Uint8Array(total);
+  m.set(datos);
+  m[largo] = 0x80;
+  const dv = new DataView(m.buffer);
+  const bits = largo * 8;
+  dv.setUint32(total - 8, Math.floor(bits / 0x100000000));
+  dv.setUint32(total - 4, bits >>> 0);
+  let h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const w = new Uint32Array(64);
+  for (let o = 0; o < total; o += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = ror32(w[i - 15], 7) ^ ror32(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = ror32(w[i - 2], 17) ^ ror32(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (hh + (ror32(e, 6) ^ ror32(e, 11) ^ ror32(e, 25)) + ((e & f) ^ (~e & g)) + K256[i] + w[i]) >>> 0;
+      const t2 = ((ror32(a, 2) ^ ror32(a, 13) ^ ror32(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+      hh = g;
+      g = f;
+      f = e;
+      e = (d + t1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (t1 + t2) >>> 0;
+    }
+    h = [a, b, c, d, e, f, g, hh].map((x, i) => (x + h[i]) >>> 0);
+  }
+  return h.map((x) => x.toString(16).padStart(8, '0')).join('');
+}
+const hashClave = (clave) => sha256Hex(SAL_CLAVE + String(clave));
+// El valor de «clave_admin» si es válido (64 hex, en minúsculas); si no, null.
+const claveAdminValida = (v) => (typeof v === 'string' && /^[0-9a-f]{64}$/i.test(v.trim()) ? v.trim().toLowerCase() : null);
+function estadoCandado(c, ahora) {
+  const hasta = Number(c?.hasta) || 0;
+  const esperaHasta = Number(c?.esperaHasta) || 0;
+  return { abierto: hasta > ahora, restanteMs: Math.max(0, hasta - ahora), espera: esperaHasta > ahora, esperaMs: Math.max(0, esperaHasta - ahora) };
+}
+// «m:ss», redondeando hacia arriba (10:00 justo al abrir; 0:00 al vencer).
+function textoRestante(ms) {
+  const s = Math.max(0, Math.ceil((Number(ms) || 0) / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+// Un error más; al llegar a INTENTOS_CLAVE, espera ESPERA_CLAVE_MS y se reinicia la cuenta.
+function errorClave(c, ahora) {
+  const errores = (Number(c?.errores) || 0) + 1;
+  return errores >= INTENTOS_CLAVE ? { ...c, errores: 0, esperaHasta: ahora + ESPERA_CLAVE_MS } : { ...c, errores };
+}
+// Estado del candado en este dispositivo (en memoria: recargar = bloqueado). Vive fuera de la tarjeta para
+// sobrevivir cuando Home Assistant la quita y la vuelve a poner al navegar. Exportado para el banco.
+const RELOJ_CANDADO = { ahora: () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) };
+const CANDADO = { hasta: 0, errores: 0, esperaHasta: 0, ruta: '', tarjeta: null, timer: null };
+const candadoAbierto = () => estadoCandado(CANDADO, RELOJ_CANDADO.ahora()).abierto;
+// Vence el desbloqueo: si la tarjeta está en pantalla, vuelve el kiosko; si no, regresa al tablero.
+function vencerCandado() {
+  const t = CANDADO.tarjeta;
+  CANDADO.hasta = 0;
+  clearTimeout(CANDADO.timer);
+  CANDADO.timer = null;
+  if (t && t.isConnected) {
+    t._kiosko();
+    t._render();
+    return 'tarjeta';
+  }
+  if (!CANDADO.ruta || typeof window === 'undefined' || !window.history) return null;
+  try {
+    if (window.location.pathname + window.location.search !== CANDADO.ruta) {
+      window.history.pushState(null, '', CANDADO.ruta);
+      window.dispatchEvent(new window.CustomEvent('location-changed', { detail: { replace: false } }));
+    }
+  } catch {
+    /* sin historial: el kiosko vuelve al regresar al tablero */
+  }
+  return 'ruta';
+}
+// ¿La pestaña pedida termina siendo Casa? (misma regla que dibujar)
+function esCasa(modelo, pid) {
+  if (!pid || pid === CASA) return true;
+  if (pid === CAMARAS) return !(modelo.camaras || []).length;
+  if (pid === ESCENAS) return !(modelo.escenas || []).length;
+  if (pid === MUSICA) return !(modelo.musica && modelo.musica.bocinas && modelo.musica.bocinas.length);
+  return !(modelo.cuartos || []).some((c) => c.id === pid);
 }
 
 // Estilos que se meten en Home Assistant (no en la tarjeta), por raíz de sombra.
@@ -1057,6 +1179,8 @@ const TXT = {
     reintentando: 'Spotify estaba ocupado. Reintentando…', spotifyAtorado: 'Spotify sigue ocupado. Reinicia Music Assistant (Ajustes → Complementos) e intenta de nuevo.',
     silenciada: 'Silenciada', silenciarGrupo: 'Silenciar el grupo', quitarSilencioGrupo: 'Quitar el silencio del grupo', silenciarB: (b) => `Silenciar ${b}`, quitarSilencioB: (b) => `Quitar el silencio de ${b}`,
     tvTitulo: 'Bocina en la TV', tvTexto: (b) => `${b} está en la TV. Si la unes, se corta el audio de la TV.`, tvSi: 'Unir de todos modos', cancelar: 'Cancelar',
+    accesoAdmin: 'Acceso de administración', escribeClave: 'Escribe la clave', claveMal: 'Clave incorrecta', esperaClave: (n) => `Demasiados intentos. Espera ${n} s`,
+    entrar: 'Entrar', borrar: 'Borrar', bloquear: 'Bloquear', bloquearEn: (t) => `Bloquear · ${t}`,
     bateria: (n, c) => `Batería ${n} %${c ? ', cargando' : ''}`,
     todaLaCasa: 'Toda la casa', escenasSobre: (n) => (n === 1 ? '1 escena' : `${n} escenas`), luces2: 'Luces', lucesDe: (on, n) => (on === 0 ? 'Todas apagadas' : on === n ? 'Todas encendidas' : `${on} de ${n} encendidas`),
     persianasDe: (ab, n) => (ab === 0 ? 'Todas cerradas' : ab === n ? 'Todas abiertas' : `${ab} de ${n} ${ab === 1 ? 'abierta' : 'abiertas'}`),
@@ -1109,6 +1233,8 @@ const TXT = {
     reintentando: 'Spotify was busy. Retrying…', spotifyAtorado: 'Spotify is still busy. Restart Music Assistant (Settings → Add-ons) and try again.',
     silenciada: 'Muted', silenciarGrupo: 'Mute the group', quitarSilencioGrupo: 'Unmute the group', silenciarB: (b) => `Mute ${b}`, quitarSilencioB: (b) => `Unmute ${b}`,
     tvTitulo: 'Speaker on TV', tvTexto: (b) => `${b} is playing the TV. Joining it will cut the TV sound.`, tvSi: 'Join anyway', cancelar: 'Cancel',
+    accesoAdmin: 'Admin access', escribeClave: 'Enter the code', claveMal: 'Wrong code', esperaClave: (n) => `Too many tries. Wait ${n} s`,
+    entrar: 'Enter', borrar: 'Delete', bloquear: 'Lock', bloquearEn: (t) => `Lock · ${t}`,
     bateria: (n, c) => `Battery ${n}%${c ? ', charging' : ''}`,
     todaLaCasa: 'Whole home', escenasSobre: (n) => (n === 1 ? '1 scene' : `${n} scenes`), luces2: 'Lights', lucesDe: (on, n) => (on === 0 ? 'All off' : on === n ? 'All on' : `${on} of ${n} on`),
     persianasDe: (ab, n) => (ab === 0 ? 'All closed' : ab === n ? 'All open' : `${ab} of ${n} open`),
@@ -1153,6 +1279,9 @@ const ICONOS = {
   repetir: 'M17 1l4 4-4 4 M3 11V9a4 4 0 0 1 4-4h14 M7 23l-4-4 4-4 M21 13v2a4 4 0 0 1-4 4H3',
   repetirUno: 'M17 1l4 4-4 4 M3 11V9a4 4 0 0 1 4-4h14 M7 23l-4-4 4-4 M21 13v2a4 4 0 0 1-4 4H3 M11 10h1v4',
   buscar: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z M20 20l-4-4',
+  engrane: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
+  candado: 'M7 11V7a5 5 0 0 1 9.9-1 M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z',
+  borrar: 'M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z M18 9l-6 6 M12 9l6 6',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -2062,6 +2191,20 @@ button.mus-vacio{cursor:pointer;width:100%}
 .aviso.con-accion{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;z-index:7}
 .aviso button{flex:none;height:36px;padding:0 14px;border-radius:18px;border:0;background:#FFFFFF;color:#111315;font-size:14px;font-weight:600;cursor:pointer}
 .hoja.confirmar{max-width:440px;gap:16px}
+.hora-fila{display:flex;align-items:center;gap:10px}
+.eng{width:34px;height:34px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.55)}
+.eng svg,.candado svg,.tecla svg{stroke:currentColor}
+.candado{display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:17px;cursor:pointer;color:#FFFFFF;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hoja.clave{max-width:360px;align-items:stretch;text-align:center}
+.clave .pin{display:flex;gap:14px;justify-content:center;margin:2px 0}
+.clave .pin i{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.7)}
+.clave .pin i.on{background:#FFFFFF;border-color:#FFFFFF}
+.teclado{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center}
+.tecla{height:72px;border-radius:50%;font-size:26px;color:#FFFFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.tecla[disabled],.clave .listo[disabled]{opacity:0.35;cursor:default}
+.sub-hoja.alerta{color:#FFB4A8}
+.clave.mal{animation:sacude .35s}
+@keyframes sacude{0%,100%{translate:0}25%{translate:-8px}75%{translate:8px}}
 @media (max-width: 960px){.mus-cols{grid-template-columns:minmax(0,1fr)}}
 .asa{display:none}
 :host([movil]) .raiz{background-position:center top;background-size:auto 340px}
@@ -2792,7 +2935,12 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
     if (d) ventana = htmlVentana(d, estados, idioma, vista, cuarto && cuarto.id !== OTROS ? cuarto.nombre : '');
   }
   if (vista.confirmarTV && musica) ventana += htmlConfirmarTV(vista.confirmarTV, modelo, estados, idioma);
-  return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}${htmlBateria(vista.bateria, idioma)}</div></div>${ahoraSuena}<div class="centro der${enCamaras ? ' cams' : ''}${enMusica ? ' mus' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${aviso}</div>`;
+  // PANEL-14: en Casa, el engrane (o «Bloquear · m:ss») junto a la batería y la hoja de la clave.
+  const enCasa = pestana === CASA;
+  const bat = htmlBateria(vista.bateria, idioma);
+  const filaHora = enCasa && vista.candado ? `<div class="hora-fila">${htmlCandado(vista.candado, idioma)}${bat}</div>` : bat;
+  const clave = enCasa && vista.candado && !vista.candado.abierto && vista.clave ? htmlClave(vista.clave, idioma) : '';
+  return `<div class="raiz"${estiloFondo}><div class="velo"></div><div class="sombra"></div><div class="capa"><div class="barra der"><div class="marca">${esc(marca)}</div><nav class="tabs vidrio" aria-label="${esc(T.cuartos)}">${tabs}</nav><div class="hora">${esc(hora)}${filaHora}</div></div>${ahoraSuena}<div class="centro der${enCamaras ? ' cams' : ''}${enMusica ? ' mus' : ''}">${centro}</div>${abajo}</div>${audio}${ventana}${clave}${aviso}</div>`;
 }
 
 // PANEL-06b: ¿la cámara grande de esta tarjeta está en pantalla completa? (dentro de la sombra)
@@ -3177,6 +3325,28 @@ function htmlConfirmarTV(c, modelo, estados, idioma) {
   return `<div class="fondo-hoja" data-tv-no="1"></div><div class="hoja confirmar" tabindex="-1" role="dialog" aria-modal="true" aria-label="${esc(T.tvTitulo)}"><div class="tit-hoja">${esc(T.tvTitulo)}</div><div class="sub-hoja">${esc(T.tvTexto(nombre))}</div><div class="pie-hoja"><button class="vidrio" data-tv-no="1">${esc(T.cancelar)}</button><button class="listo" data-tv-si="1">${esc(T.tvSi)}</button></div></div>`;
 }
 
+// PANEL-14: el engrane (candado cerrado) o la pastilla «Bloquear · m:ss» (abierto).
+function htmlCandado(c, idioma) {
+  const T = TXT[idioma];
+  return c.abierto
+    ? `<button class="candado vidrio" data-candado="bloquear" aria-label="${esc(T.bloquear)}">${svg(ICONOS.candado, 16)}<span>${esc(T.bloquearEn(c.restante))}</span></button>`
+    : `<button class="eng vidrio" data-candado="abrir" aria-label="${esc(T.accesoAdmin)}">${svg(ICONOS.engrane, 18)}</button>`;
+}
+
+// PANEL-14: la hoja de la clave. Nunca lleva la clave: solo cuántos dígitos van (puntos).
+function htmlClave(c, idioma) {
+  const T = TXT[idioma];
+  const n = Math.max(0, Math.min(CLAVE_MAX, Number(c.n) || 0));
+  const puntos = Array.from({ length: Math.max(CLAVE_MIN, n) }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('');
+  const espera = Number(c.espera) > 0;
+  const sub = espera ? T.esperaClave(c.espera) : c.mal ? T.claveMal : T.escribeClave;
+  const dis = espera ? ' disabled' : '';
+  const teclas = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'borrar']
+    .map((k) => (k === '' ? '<span></span>' : k === 'borrar' ? `<button class="tecla vidrio" data-tecla="borrar" aria-label="${esc(T.borrar)}"${dis}>${svg(ICONOS.borrar, 24)}</button>` : `<button class="tecla vidrio" data-tecla="${k}"${dis}>${k}</button>`))
+    .join('');
+  return `<div class="fondo-hoja" data-clave="cancelar"></div><div class="hoja confirmar clave${c.mal ? ' mal' : ''}" tabindex="-1" role="dialog" aria-modal="true" aria-label="${esc(T.accesoAdmin)}"><div class="tit-hoja">${esc(T.accesoAdmin)}</div><div class="sub-hoja${c.mal || espera ? ' alerta' : ''}" aria-live="polite">${esc(sub)}</div><div class="pin" aria-hidden="true">${puntos}</div><div class="teclado">${teclas}</div><div class="pie-hoja"><button class="vidrio" data-clave="cancelar">${esc(T.cancelar)}</button><button class="listo" data-clave="entrar"${espera || n < CLAVE_MIN ? ' disabled' : ''}>${esc(T.entrar)}</button></div></div>`;
+}
+
 // ------------------------------------------------------------------ actualizar sin reemplazar
 // Pone en `a` (lo que ya está en pantalla) lo de `b` (lo nuevo) cambiando solo lo
 // distinto: un toque que empieza antes de un cambio de estado no se pierde, y las
@@ -3251,6 +3421,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._pendiente = null;
       this._poniendo = false;
       this._esperaSpotify = ESPERA_SPOTIFY;
+      // PANEL-14: la hoja de la clave abierta ({ pin, mal }) o null. La clave escrita solo vive aquí.
+      this._clave = null;
       this._pestana = null;
       try {
         this._pestana = localStorage.getItem('vizions-panel-pestana');
@@ -3383,7 +3555,9 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         fondo: urlSegura(cfg.fondo) || '',
         kiosko: cfg.kiosko === false ? false : true,
         cuarto: typeof cfg.cuarto === 'string' && cfg.cuarto.trim() ? cfg.cuarto.trim() : '',
+        clave: claveAdminValida(cfg.clave_admin),
       };
+      if (cfg.clave_admin != null && cfg.clave_admin !== '' && !this._cfg.clave) console.warn('[vizions-panel] clave_admin no es válida (deben ser 64 caracteres hex): no hay acceso de administración');
       this._kiosko();
       this._render();
     }
@@ -3421,6 +3595,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       // PANEL-09: la pila de la tablet, al conectar y cada minuto.
       this._leerBateria();
       this._tBateria = setInterval(() => this._leerBateria(), 60000);
+      // PANEL-14: la cuenta de «Bloquear · m:ss» y la espera de la clave, cada segundo.
+      this._tCandado = setInterval(() => this._tickCandado(), 1000);
       document.addEventListener('fullscreenchange', this._alPantalla);
       if (this._hass && !this._conectado) this._conectar();
       this._kiosko();
@@ -3437,6 +3613,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     disconnectedCallback() {
       clearInterval(this._reloj);
       clearInterval(this._tBateria);
+      clearInterval(this._tCandado);
       document.removeEventListener('fullscreenchange', this._alPantalla);
       this._vivos.clear();
       clearTimeout(this._tRecarga);
@@ -3459,13 +3636,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     // Pone (o quita) los estilos del modo kiosko en Home Assistant. Barato: se llama seguido.
     _kiosko() {
       if (!this.isConnected || !this._hass) return;
-      let busqueda = '';
-      try {
-        busqueda = window.location.search;
-      } catch {
-        busqueda = '';
-      }
-      const quiere = quiereKiosko({ esAdmin: !!(this._hass.user && this._hass.user.is_admin), config: this._cfg.kiosko, busqueda });
+      // PANEL-14: con el candado abierto (clave correcta, 10 min) el kiosko se suspende.
+      const quiere = this._pideKiosko() && !candadoAbierto();
       if (!quiere) {
         this._quitarKiosko();
         return;
@@ -3483,6 +3655,17 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       }
       this.toggleAttribute('kiosko', true);
       this._guardarAtras();
+    }
+
+    // ¿Este usuario y esta dirección piden kiosko? (sin contar el candado)
+    _pideKiosko() {
+      let busqueda = '';
+      try {
+        busqueda = window.location.search;
+      } catch {
+        busqueda = '';
+      }
+      return quiereKiosko({ esAdmin: !!(this._hass && this._hass.user && this._hass.user.is_admin), config: this._cfg.kiosko, busqueda });
     }
 
     _quitarKiosko() {
@@ -3598,6 +3781,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       if (this._lateral && !grupoLateral(this._modeloActual, this._lateral)) this._lateral = null;
       const ahora = Date.now();
       for (const [ent, hasta] of this._sinFoto) if (hasta <= ahora) this._sinFoto.delete(ent);
+      // PANEL-14: la hoja de la clave solo vive en Casa (y con candado).
+      if (this._clave && (!this._vistaCandado() || !esCasa(this._modeloActual, this._pestana))) this._clave = null;
       const T = TXT[idioma];
       const html = this._reg
         ? dibujar({
@@ -3632,6 +3817,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
               poniendo: this._poniendo,
               cuartoTablet: mus ? mus.cuarto : null,
               https: typeof location !== 'undefined' && location.protocol === 'https:',
+              candado: this._vistaCandado(),
+              clave: this._vistaClave(),
             },
           })
         : `<div class="raiz"><div class="velo"></div><div class="capa der"><div class="sobre">${this._errorReg ? esc(T.errorRegistro) : ''}</div></div></div>`;
@@ -3918,6 +4105,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._suprimirClic = 0;
         return;
       }
+      // PANEL-14: engrane, «Bloquear» y la hoja de la clave.
+      if (this._clicCandado(ev)) return;
       if (ev.target.closest('[data-cerrar]')) {
         this._cerrarVentana();
         return;
@@ -4367,6 +4556,104 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     }
 
     // PANEL-08: ir a una pestaña (Escenas) desde un panel lateral.
+    // ------------------------------------------------------------ PANEL-14: candado
+    // Lo que dibujar necesita del candado; null = sin engrane (sin clave o sin kiosko).
+    _vistaCandado() {
+      if (!this._hass || !this._cfg.clave || !this._pideKiosko()) return null;
+      const e = estadoCandado(CANDADO, RELOJ_CANDADO.ahora());
+      return { abierto: e.abierto, restante: e.abierto ? textoRestante(e.restanteMs) : '' };
+    }
+
+    _vistaClave() {
+      if (!this._clave) return null;
+      const e = estadoCandado(CANDADO, RELOJ_CANDADO.ahora());
+      return { n: this._clave.pin.length, mal: this._clave.mal, espera: e.espera ? Math.ceil(e.esperaMs / 1000) : 0 };
+    }
+
+    _clicCandado(ev) {
+      const b = ev.target.closest('[data-candado], [data-clave], [data-tecla]');
+      if (!b) return false;
+      if (b.disabled) return true;
+      if (b.dataset.candado === 'abrir') {
+        if (!this._vistaCandado()) return true;
+        this._lateral = null;
+        this._ventana = null;
+        this._popMusica = false;
+        this._clave = { pin: '', mal: 0 };
+      } else if (b.dataset.candado === 'bloquear') {
+        this._bloquear();
+        return true;
+      } else if (b.dataset.clave === 'cancelar') {
+        this._clave = null;
+      } else if (b.dataset.clave === 'entrar') {
+        this._entrar();
+        return true;
+      } else if (b.dataset.tecla && this._clave) {
+        if (estadoCandado(CANDADO, RELOJ_CANDADO.ahora()).espera) return true;
+        const pin = this._clave.pin;
+        const k = b.dataset.tecla;
+        if (k === 'borrar') this._clave = { pin: pin.slice(0, -1), mal: 0 };
+        else if (/^[0-9]$/.test(k) && pin.length < CLAVE_MAX) this._clave = { pin: pin + k, mal: 0 };
+      }
+      this._render();
+      return true;
+    }
+
+    _entrar() {
+      const c = this._clave;
+      if (!c) return;
+      const ahora = RELOJ_CANDADO.ahora();
+      if (estadoCandado(CANDADO, ahora).espera || c.pin.length < CLAVE_MIN) return;
+      if (this._cfg.clave && hashClave(c.pin) === this._cfg.clave) {
+        this._desbloquear();
+        return;
+      }
+      Object.assign(CANDADO, errorClave(CANDADO, ahora));
+      // La sacudida se repite en cada error: al teclear se quitó la clase «mal» y aquí vuelve.
+      this._clave = { pin: '', mal: 1 };
+      this._render();
+    }
+
+    _desbloquear() {
+      CANDADO.hasta = RELOJ_CANDADO.ahora() + DESBLOQUEO_MS;
+      CANDADO.errores = 0;
+      CANDADO.esperaHasta = 0;
+      CANDADO.tarjeta = this;
+      try {
+        CANDADO.ruta = window.location.pathname + window.location.search;
+      } catch {
+        CANDADO.ruta = '';
+      }
+      clearTimeout(CANDADO.timer);
+      CANDADO.timer = setTimeout(vencerCandado, DESBLOQUEO_MS);
+      this._clave = null;
+      this._kiosko();
+      this._render();
+    }
+
+    _bloquear() {
+      CANDADO.hasta = 0;
+      clearTimeout(CANDADO.timer);
+      CANDADO.timer = null;
+      this._kiosko();
+      this._render();
+    }
+
+    // Cada segundo: si el tiempo ya pasó (el temporizador se pudo atrasar con la pantalla dormida), se
+    // vence; si está abierto o la hoja está abierta, se redibuja la cuenta.
+    _tickCandado() {
+      if (!this._hass) return;
+      if (CANDADO.hasta && !candadoAbierto()) {
+        vencerCandado();
+        if (CANDADO.tarjeta !== this) {
+          this._kiosko();
+          this._render();
+        }
+        return;
+      }
+      if (CANDADO.hasta || this._clave) this._render();
+    }
+
     _irAPestana(id) {
       this._lateral = null;
       this._ventana = null;
@@ -4442,6 +4729,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

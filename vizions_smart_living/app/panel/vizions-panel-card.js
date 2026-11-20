@@ -1,6 +1,6 @@
-// Vizions Panel 0.13.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.13.1 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: d1aabecaa3e4933e52ab385e16fc185a
+// Huella del contenido: 3486403d4ef36e7f9ec20b5d99be3e7b
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -950,13 +950,19 @@ const __vp_tarjeta = (() => {
 // recargar. 5 errores seguidos = 30 s de espera. SHA-256 propio: crypto.subtle no existe en http://IP:8123.
 // Es un candado de cortesía; la protección real es que el usuario de la tablet no sea administrador.
 //
+// VIZIONS-PANEL-14b (0.13.1, pedido de Emilio el 19 nov 2026, tras probar 14 en la tablet): capas. Las
+// ventanas y los paneles laterales (con su fondo oscuro) quedan encima de «Ahora suena» y su mini modal (antes la
+// señal, con z-index 5, salía encima del teclado de la clave, de la ventana de un dispositivo y de la pregunta de
+// la TV); los avisos, encima de todo. El teclado ya no muestra 4 círculos vacíos al empezar (parecía que la clave
+// era de 4): solo un punto por dígito escrito.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.13.0';
+const VERSION_PANEL = '0.13.1';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -2196,15 +2202,16 @@ button.mus-vacio{cursor:pointer;width:100%}
 .eng svg,.candado svg,.tecla svg{stroke:currentColor}
 .candado{display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:17px;cursor:pointer;color:#FFFFFF;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 .hoja.clave{max-width:360px;align-items:stretch;text-align:center}
-.clave .pin{display:flex;gap:14px;justify-content:center;margin:2px 0}
-.clave .pin i{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.7)}
-.clave .pin i.on{background:#FFFFFF;border-color:#FFFFFF}
+.clave .pin{display:flex;gap:14px;justify-content:center;margin:2px 0;min-height:14px}
+.clave .pin i{width:14px;height:14px;border-radius:50%;background:#FFFFFF}
 .teclado{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center}
 .tecla{height:72px;border-radius:50%;font-size:26px;color:#FFFFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .tecla[disabled],.clave .listo[disabled]{opacity:0.35;cursor:default}
 .sub-hoja.alerta{color:#FFB4A8}
 .clave.mal{animation:sacude .35s}
 @keyframes sacude{0%,100%{translate:0}25%{translate:-8px}75%{translate:8px}}
+.fondo-lateral,.lateral,.fondo-hoja,.hoja{z-index:8}
+.aviso,.aviso.con-accion{z-index:9}
 @media (max-width: 960px){.mus-cols{grid-template-columns:minmax(0,1fr)}}
 .asa{display:none}
 :host([movil]) .raiz{background-position:center top;background-size:auto 340px}
@@ -3337,7 +3344,8 @@ function htmlCandado(c, idioma) {
 function htmlClave(c, idioma) {
   const T = TXT[idioma];
   const n = Math.max(0, Math.min(CLAVE_MAX, Number(c.n) || 0));
-  const puntos = Array.from({ length: Math.max(CLAVE_MIN, n) }, (_, i) => `<i${i < n ? ' class="on"' : ''}></i>`).join('');
+  // PANEL-14b: un punto por dígito escrito; sin círculos vacíos (no revela el largo ni sugiere uno).
+  const puntos = '<i></i>'.repeat(n);
   const espera = Number(c.espera) > 0;
   const sub = espera ? T.esperaClave(c.espera) : c.mal ? T.claveMal : T.escribeClave;
   const dis = espera ? ' disabled' : '';

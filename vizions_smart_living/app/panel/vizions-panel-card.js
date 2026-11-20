@@ -1,6 +1,6 @@
-// Vizions Panel 0.13.1 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.13.2 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 3486403d4ef36e7f9ec20b5d99be3e7b
+// Huella del contenido: 24dedacdce3ca864cc4d210e14de817a
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -956,13 +956,20 @@ const __vp_tarjeta = (() => {
 // la TV); los avisos, encima de todo. El teclado ya no muestra 4 círculos vacíos al empezar (parecía que la clave
 // era de 4): solo un punto por dígito escrito.
 //
+// VIZIONS-PANEL-15 (0.13.2, aprobado el 19 nov 2026): cámaras en la vista grande. Una cámara con video
+// (supported_features STREAM) se ve directo con el reproductor de Home Assistant (ha-camera-stream: WebRTC o
+// HLS), el mismo de su ventana; ya no se pide el MJPEG, que depende de la foto fija: con una Generic sin foto
+// (grabador Hikvision) Home Assistant deja esa conexión abierta sin mandar nada ni dar error, y la vista grande
+// quedaba transparente con «EN VIVO». El MJPEG sigue para las cámaras sin video (o si el reproductor no carga),
+// vigilado: si en ESPERA_FOTO_MS no llega imagen, la cámara pasa a «sin foto» («Sin imagen»).
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.13.1';
+const VERSION_PANEL = '0.13.2';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -976,6 +983,8 @@ const MUSICA = '__musica__';
 // PANEL-06: cuántas cámaras sin foto se ven en vivo a la vez en la cuadrícula, y cuánto dura la marca «sin foto».
 const MAX_VIVO = 4;
 const SIN_FOTO_MS = 10 * 60 * 1000;
+// PANEL-15: cuánto se espera la primera imagen del MJPEG de la vista grande antes de darlo por fallido.
+const ESPERA_FOTO_MS = 8000;
 const CAM_STREAM = 2; // CameraEntityFeature.STREAM
 
 // ------------------------------------------------------------------ kiosko
@@ -2796,11 +2805,12 @@ function dibujar({ modelo, estados, idioma = 'es', marca = '', fondo = null, aho
       let medio;
       let vivo = false;
       if (!ok) medio = nada(T.sinConexion, 40);
-      else if (!sinFoto.has(sel.entidad)) {
-        medio = `<img src="${esc(urlCamara(e, true))}" alt="${esc(sel.nombre)}" data-foto="${esc(sel.entidad)}">`;
-        vivo = true;
-      } else if (camaraConVideo(e) && !vista.sinReproductor) {
+      else if (camaraConVideo(e) && !vista.sinReproductor) {
+        // PANEL-15: con video, directo el reproductor de Home Assistant (no depende de la foto fija).
         medio = `<div class="vivo" data-vivo="${esc(sel.entidad)}" data-ajuste="cover"></div>`;
+        vivo = true;
+      } else if (!sinFoto.has(sel.entidad)) {
+        medio = `<img src="${esc(urlCamara(e, true))}" alt="${esc(sel.nombre)}" data-foto="${esc(sel.entidad)}" data-mjpeg="1">`;
         vivo = true;
       } else medio = nada(T.sinImagen, 40);
       const chip = vivo ? chipVivo : ok ? '' : `<span class="chipcam fuera"><i></i><span>${esc(T.sinConexion)}</span></span>`;
@@ -3425,6 +3435,9 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._avisoAccion = null;
       this._volPorBocina = false;
       this._tapasMalas = new Set();
+      // PANEL-15: el MJPEG de la vista grande que se está vigilando ({ src }) y cuánto se le espera.
+      this._vigilada = null;
+      this._esperaFoto = ESPERA_FOTO_MS;
       // PANEL-13c: la música que espera «Poner aquí», si se está poniendo y cuánto esperar a Spotify.
       this._pendiente = null;
       this._poniendo = false;
@@ -3627,6 +3640,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       clearTimeout(this._tRecarga);
       clearTimeout(this._tKiosko);
       clearTimeout(this._tBuscar);
+      clearTimeout(this._tFoto);
+      this._vigilada = null;
       this._quitarKiosko();
       if (this._medida) this._medida.disconnect();
       this._medida = null;
@@ -3839,6 +3854,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._html = html;
       }
       this._montarVivos();
+      this._vigilarMjpeg();
       this._montarIconos();
       this._centrarPestana();
     }
@@ -4048,6 +4064,27 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         if (!listo) this._sinReproductor = true;
         this._render();
       })();
+    }
+
+    // PANEL-15: el MJPEG de la vista grande puede quedarse abierto sin mandar nada y sin error (Generic sin
+    // foto fija). Si en _esperaFoto no hay imagen (naturalWidth 0), se marca «sin foto». Una dirección nueva
+    // (el token cambia cada pocos minutos) vuelve a empezar la cuenta; redibujar con la misma, no.
+    _vigilarMjpeg() {
+      const img = this.shadowRoot ? this.shadowRoot.querySelector('img[data-mjpeg][data-foto]') : null;
+      if (!img) {
+        clearTimeout(this._tFoto);
+        this._vigilada = null;
+        return;
+      }
+      const src = img.getAttribute('src');
+      if (this._vigilada && this._vigilada.src === src) return;
+      clearTimeout(this._tFoto);
+      this._vigilada = { src };
+      this._tFoto = setTimeout(() => {
+        const ahora = this.shadowRoot ? this.shadowRoot.querySelector('img[data-mjpeg][data-foto]') : null;
+        if (!ahora || ahora.naturalWidth > 0) return;
+        if (this._marcarSinFoto(ahora.dataset.foto)) this._render();
+      }, this._esperaFoto);
     }
 
     _dispositivo(entidad) {
@@ -4737,6 +4774,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, ESPERA_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

@@ -1,6 +1,6 @@
-// Vizions Panel 0.13.2 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.14.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 24dedacdce3ca864cc4d210e14de817a
+// Huella del contenido: 20e7797deccd7adbc99baa5330feed96
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -963,13 +963,21 @@ const __vp_tarjeta = (() => {
 // quedaba transparente con «EN VIVO». El MJPEG sigue para las cámaras sin video (o si el reproductor no carga),
 // vigilado: si en ESPERA_FOTO_MS no llega imagen, la cámara pasa a «sin foto» («Sin imagen»).
 //
+// VIZIONS-PANEL-16 (0.14.0, aprobado el 23 nov 2026): el aire va de grado en grado. En la ventana del aire, un
+// dial (arco de 270° entre min_temp y max_temp, redondeados a grados enteros) en lugar de − / +: se arrastra la
+// perilla, el número cambia en vivo y la orden se manda UNA vez, al soltar («Suelta para aplicar»). El arco se pinta
+// del color del modo y un punto marca la temperatura actual. Con el teclado, las flechas mueven un grado y la orden
+// sale 700 ms después de la última. En el panel lateral, − / + mueven un grado entero (24.5 → 25 con +, → 24 con −).
+// La temperatura elegida nunca se muestra con decimales (la actual, «ahora 32.9°», sí). Antes, sin
+// target_temp_step, el panel subía de 0.5 en 0.5.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.13.2';
+const VERSION_PANEL = '0.14.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -1178,6 +1186,7 @@ const TXT = {
     colores: { ambar: 'Ámbar', coral: 'Coral', rosa: 'Rosa', violeta: 'Violeta', azul: 'Azul', turquesa: 'Turquesa' },
     apagar: 'Apagar', encender: 'Encender', listo: 'Listo', cerrar: 'Cerrar',
     modo: 'Modo', ventilador: 'Ventilador', bajarTemp: 'Bajar temperatura', subirTemp: 'Subir temperatura', ahora: (t) => `ahora ${t}°`,
+    temperatura: 'Temperatura', soltarAplicar: 'Suelta para aplicar',
     modos: { cool: 'Frío', heat: 'Calor', dry: 'Seco', fan_only: 'Ventilador', auto: 'Auto', heat_cool: 'Auto' },
     vels: { auto: 'Auto', low: 'Baja', medium: 'Media', middle: 'Media', high: 'Alta', silent: 'Silencio', quiet: 'Silencio', turbo: 'Turbo', on: 'Encendido', off: 'Apagado', diffuse: 'Difuso', focus: 'Directo' },
     volumen: 'Volumen', silenciar: 'Silenciar', quitarSilencio: 'Quitar silencio', anterior: 'Anterior', siguiente: 'Siguiente', reproducirPausar: 'Reproducir o pausar',
@@ -1232,6 +1241,7 @@ const TXT = {
     colores: { ambar: 'Amber', coral: 'Coral', rosa: 'Pink', violeta: 'Violet', azul: 'Blue', turquesa: 'Turquoise' },
     apagar: 'Turn off', encender: 'Turn on', listo: 'Done', cerrar: 'Close',
     modo: 'Mode', ventilador: 'Fan', bajarTemp: 'Lower temperature', subirTemp: 'Raise temperature', ahora: (t) => `now ${t}°`,
+    temperatura: 'Temperature', soltarAplicar: 'Release to apply',
     modos: { cool: 'Cool', heat: 'Heat', dry: 'Dry', fan_only: 'Fan', auto: 'Auto', heat_cool: 'Auto' },
     vels: { auto: 'Auto', low: 'Low', medium: 'Medium', middle: 'Medium', high: 'High', silent: 'Quiet', quiet: 'Quiet', turbo: 'Turbo', on: 'On', off: 'Off', diffuse: 'Diffuse', focus: 'Focus' },
     volumen: 'Volume', silenciar: 'Mute', quitarSilencio: 'Unmute', anterior: 'Previous', siguiente: 'Next', reproducirPausar: 'Play or pause',
@@ -1311,6 +1321,20 @@ const grados = (v) => {
   if (n === null) return null;
   return String(Math.round(n * 10) / 10).replace(/\.0$/, '');
 };
+// PANEL-16: la temperatura ELEGIDA del aire siempre en grados enteros (24.5 → «25»).
+const gradosEnteros = (v) => {
+  const n = num(v);
+  return n === null ? null : String(Math.round(n));
+};
+// PANEL-16: los grados enteros que el aire acepta: de min_temp hacia arriba y de max_temp hacia abajo
+// (16.5–30.5 → 17–30). Sin rango, 16–30. null si no queda ni un grado.
+function rangoGrados(a) {
+  const mi = num(a?.min_temp);
+  const ma = num(a?.max_temp);
+  const min = mi !== null ? Math.ceil(mi - 1e-9) : 16;
+  const max = ma !== null ? Math.floor(ma + 1e-9) : 30;
+  return max >= min ? { min, max } : null;
+}
 // Solo rutas propias de HA (/local/…, /api/image/serve/…) o http(s), sin comillas ni paréntesis.
 const urlSegura = (u) => (typeof u === 'string' && /^(\/(?!\/)|https?:\/\/)[^"'()\\\s<>]*$/.test(u) ? u : null);
 
@@ -1610,7 +1634,7 @@ function fichaDe(d, estados, idioma = 'es') {
     if (!est.encendido) f.sub = T.apagado;
     else {
       const verbo = T.climaVerbo[est.accion] || T.climaVerbo[est.modo] || T.espera;
-      f.sub = grados(est.temperatura) !== null ? `${verbo} ${T.a} ${grados(est.temperatura)}°` : verbo;
+      f.sub = gradosEnteros(est.temperatura) !== null ? `${verbo} ${T.a} ${gradosEnteros(est.temperatura)}°` : verbo;
     }
   } else if (d.tipo === 'ventilador') {
     f.on = est.encendido;
@@ -1765,17 +1789,21 @@ function ordenControl(d, estados, control, valor) {
       return c.color && col ? propio('light', 'turn_on', { rgb_color: [...col[1]] }) : null;
     }
     case 'temp': {
+      // PANEL-16: de grado entero en grado entero: 24.5 → 25 con +, → 24 con −.
       const actual = num(a.temperature);
       const dir = valor === '+' ? 1 : valor === '-' ? -1 : 0;
-      if (!c.temp || actual === null || !dir) return null;
-      const paso = num(a.target_temp_step) || 0.5;
-      let g = Math.round((actual + dir * paso) / paso) * paso;
-      g = Math.round(g * 100) / 100;
-      const min = num(a.min_temp);
-      const max = num(a.max_temp);
-      if (min !== null) g = Math.max(min, g);
-      if (max !== null) g = Math.min(max, g);
+      const rg = rangoGrados(a);
+      if (!c.temp || actual === null || !dir || !rg) return null;
+      let g = dir > 0 ? Math.floor(actual + 1e-9) + 1 : Math.ceil(actual - 1e-9) - 1;
+      g = Math.max(rg.min, Math.min(rg.max, g));
       return g === actual ? null : de('temperatura', { grados: g });
+    }
+    case 'grados': {
+      // PANEL-16: el dial manda los grados exactos (enteros, dentro del rango del aire).
+      const rg = rangoGrados(a);
+      const g = typeof valor === 'number' ? valor : typeof valor === 'string' && /^-?\d{1,3}$/.test(valor) ? Number(valor) : NaN;
+      if (!c.temp || !rg || !Number.isInteger(g) || g < rg.min || g > rg.max) return null;
+      return g === num(a.temperature) ? null : de('temperatura', { grados: g });
     }
     case 'modo':
       return c.modos?.includes(valor) ? propio('climate', 'set_hvac_mode', { hvac_mode: valor }) : null;
@@ -1922,6 +1950,21 @@ button:focus-visible{outline:2px solid rgba(255,255,255,0.75);outline-offset:2px
 .temp{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .temp .num{font-size:clamp(64px,10vw,104px);font-weight:300;letter-spacing:-0.05em;line-height:1;text-align:center}
 .temp .ahora{font-size:16px;color:rgba(255,255,255,0.84);margin-top:8px;text-align:center}
+.dial{width:min(250px,100%);margin:0 auto;--dial:#6FA8FF}
+.dial-caja{position:relative}
+.dial-svg{display:block;width:100%;height:auto;touch-action:none;cursor:grab;outline:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.dial.arr .dial-svg{cursor:grabbing}
+.dial-pista{fill:none;stroke:rgba(255,255,255,0.14);stroke-width:16;stroke-linecap:round}
+.dial-svg:focus-visible .dial-pista{stroke:rgba(255,255,255,0.32)}
+.dial-marcas{fill:none;stroke:rgba(255,255,255,0.30);stroke-width:2;stroke-linecap:round}
+.dial-activo{fill:none;stroke:var(--dial);stroke-width:16;stroke-linecap:round}
+.dial-ahora{fill:#FFFFFF;opacity:0.85}
+.dial-perilla{fill:#FFFFFF;stroke:var(--dial);stroke-width:4}
+.dial-cifra{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;pointer-events:none;text-align:center}
+.dial-cifra .num{margin-bottom:6px;font-size:clamp(56px,8vw,76px);font-weight:300;letter-spacing:-0.05em;line-height:1;font-variant-numeric:tabular-nums}
+.dial-sub{font-size:14px;line-height:1.3;color:rgba(255,255,255,0.84);max-width:62%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{grid-template-columns:repeat(auto-fit,minmax(84px,1fr))}
+.dial-ext{display:flex;justify-content:space-between;width:66%;margin:-26px auto 0;font-size:13px;color:rgba(255,255,255,0.72)}
 .controles{display:flex;align-items:center;justify-content:center;gap:18px}
 .play{width:72px;height:72px;border-radius:36px;border:0;background:#FFFFFF;color:#111315;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .pie-hoja{display:flex;gap:12px}
@@ -2252,6 +2295,7 @@ button.mus-vacio{cursor:pointer;width:100%}
 :host([movil]) .lista-lat{min-height:0}
 :host([movil]) .hoja{top:auto;left:0;right:0;bottom:0;transform:none;width:auto;max-width:none;max-height:86%;padding:8px 18px calc(20px + var(--vp-abajo,0px));border-radius:24px 24px 0 0;gap:18px}
 :host([movil]) .tit-hoja{font-size:20px}
+:host([movil]) .dial{width:min(240px,100%)}
 :host([movil]) .titulo.mus{font-size:36px}
 :host([movil]) .ahora{justify-content:flex-start}
 :host([movil]) .pop{left:0;transform:none;width:calc(100vw - 32px)}
@@ -2346,6 +2390,67 @@ function htmlEscena(f, { espera = false, activada = false, idioma = 'es' } = {})
   return `<button class="${clases.join(' ')}" data-ficha="${esc(f.entidad)}"${desactivada}>${icono(f.entidad, f.icono, 24)}<span class="tx"><span class="nom">${esc(f.nombre)}</span><span class="est">${esc(activada ? T.activada : f.sub)}</span></span></button>`;
 }
 
+// ------------------------------------------------------------------ PANEL-16: dial del aire
+// Arco de 270° (de las 7:30 a las 4:30, en el sentido del reloj) dentro de un cuadro de 300×300.
+const DIAL = Object.freeze({ lado: 300, radio: 124, inicio: 135, barrido: 270 });
+const COLOR_DIAL = { cool: '#6FA8FF', heat: '#FFB45C', heat_cool: '#5FD3C4', auto: '#5FD3C4', dry: '#8FD3E8', fan_only: '#C9CED6' };
+const dos = (x) => String(Math.round(x * 100) / 100);
+function anguloDial(v, min, max) {
+  const t = max > min ? (v - min) / (max - min) : 0;
+  return DIAL.inicio + Math.max(0, Math.min(1, t)) * DIAL.barrido;
+}
+function puntoDial(angulo, r = DIAL.radio) {
+  const a = (angulo * Math.PI) / 180;
+  const c = DIAL.lado / 2;
+  return [c + r * Math.cos(a), c + r * Math.sin(a)];
+}
+function arcoDial(a1, a2) {
+  if (!(a2 - a1 > 0.01)) return '';
+  const [x1, y1] = puntoDial(a1);
+  const [x2, y2] = puntoDial(a2);
+  return `M ${dos(x1)} ${dos(y1)} A ${DIAL.radio} ${DIAL.radio} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${dos(x2)} ${dos(y2)}`;
+}
+// Los grados (enteros) de un punto del cuadro del dial. En el centro (sobre el número) no hay: null, o
+// `previo` si ya se está arrastrando. El hueco de abajo va al extremo más cercano, y mientras se arrastra no
+// se brinca de un extremo al otro por el hueco (se queda en `previo`).
+function gradosDeDial(x, y, min, max, previo = null) {
+  const c = DIAL.lado / 2;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || Math.hypot(x - c, y - c) < DIAL.radio * 0.35) return previo;
+  let ang = (Math.atan2(y - c, x - c) * 180) / Math.PI;
+  if (ang < 0) ang += 360;
+  let rel = ang - DIAL.inicio;
+  if (rel < 0) rel += 360;
+  if (rel > DIAL.barrido) rel = rel < (DIAL.barrido + 360) / 2 ? DIAL.barrido : 0;
+  const v = Math.max(min, Math.min(max, Math.round(min + (rel / DIAL.barrido) * (max - min))));
+  if (previo !== null && Math.abs(v - previo) > (max - min) / 2) return previo;
+  return v;
+}
+// Las marcas de cada grado (de cada 2 si el rango pasa de 30): las pares, un poco más largas.
+function marcasDial(min, max) {
+  const salto = max - min > 30 ? 2 : 1;
+  let d = '';
+  for (let g = min; g <= max; g += salto) {
+    const ang = anguloDial(g, min, max);
+    const [x1, y1] = puntoDial(ang, DIAL.radio - (g % 2 === 0 ? 30 : 26));
+    const [x2, y2] = puntoDial(ang, DIAL.radio - 18);
+    d += `M ${dos(x1)} ${dos(y1)} L ${dos(x2)} ${dos(y2)} `;
+  }
+  return d.trim();
+}
+// El dial de la ventana del aire. `valor` = los grados que se muestran (los del dedo si está arrastrando).
+function htmlDial({ valor, min, max, actual = null, modo = 'off', encendido = false, lineas = [], etiqueta = 'Temperatura', arrastrando = false }) {
+  const v = Math.max(min, Math.min(max, Math.round(valor)));
+  const ang = anguloDial(v, min, max);
+  const [px, py] = puntoDial(ang);
+  const color = encendido ? COLOR_DIAL[modo] || COLOR_DIAL.cool : 'rgba(255,255,255,0.38)';
+  let ahora = '';
+  if (num(actual) !== null) {
+    const [ax, ay] = puntoDial(anguloDial(actual, min, max));
+    ahora = `<circle class="dial-ahora" cx="${dos(ax)}" cy="${dos(ay)}" r="4"></circle>`;
+  }
+  return `<div class="dial${arrastrando ? ' arr' : ''}" style="--dial:${color}"><div class="dial-caja"><svg class="dial-svg" viewBox="0 0 ${DIAL.lado} ${DIAL.lado}" data-dial="1" role="slider" tabindex="0" aria-label="${esc(etiqueta)}" aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${v}" aria-valuetext="${v}°"><path class="dial-pista" d="${arcoDial(DIAL.inicio, DIAL.inicio + DIAL.barrido)}"></path><path class="dial-marcas" d="${marcasDial(min, max)}"></path><path class="dial-activo" d="${arcoDial(DIAL.inicio, ang)}"></path>${ahora}<circle class="dial-perilla" cx="${dos(px)}" cy="${dos(py)}" r="${arrastrando ? 16 : 13}"></circle></svg><div class="dial-cifra" aria-hidden="true"><div class="num">${v}°</div>${lineas.filter(Boolean).map((l) => `<div class="dial-sub">${esc(l)}</div>`).join('')}</div></div><div class="dial-ext" aria-hidden="true"><span>${min}°</span><span>${max}°</span></div></div>`;
+}
+
 // La ventana de un dispositivo. `vista.arrastre` = lo que el dedo está moviendo en una barra.
 function htmlVentana(d, estados, idioma, vista, lugar) {
   const T = TXT[idioma];
@@ -2386,8 +2491,16 @@ function htmlVentana(d, estados, idioma, vista, lugar) {
     pie = `<div class="pie-hoja"><button class="vidrio" data-control="onoff" data-valor="">${esc(prendida ? T.apagar : T.encender)}</button>${listo}</div>`;
   } else if (d.tipo === 'clima') {
     const est = f.estado;
-    if (c.temp && num(a.temperature) !== null) {
-      cuerpo += `<div class="temp">${opc('temp', '-', svg(ICONOS.menos, 28), { etiqueta: T.bajarTemp, clase: 'redondo vidrio' })}<div><div class="num">${esc(grados(a.temperature))}°</div><div class="ahora">${esc([est.encendido ? f.sub : T.apagado, num(est.actual) !== null ? T.ahora(grados(est.actual)) : ''].filter(Boolean).join(' · '))}</div></div>${opc('temp', '+', svg(ICONOS.mas, 28), { etiqueta: T.subirTemp, clase: 'redondo vidrio' })}</div>`;
+    const rg = c.temp && num(a.temperature) !== null ? rangoGrados(a) : null;
+    if (rg) {
+      // PANEL-16: dial de grados enteros; mientras el dedo lo mueve manda `vista.arrastre` (control «grados»).
+      const real = Math.max(rg.min, Math.min(rg.max, Math.round(a.temperature)));
+      const v = valorDe('grados', real);
+      const arrastrando = !!(arr && arr.control === 'grados' && arr.dedo);
+      const verbo = T.climaVerbo[est.accion] || T.climaVerbo[est.modo] || T.espera;
+      const estado = est.encendido ? `${verbo} ${T.a} ${v}°` : T.apagado;
+      const lineas = arrastrando ? [T.soltarAplicar] : [estado, num(est.actual) !== null ? T.ahora(grados(est.actual)) : ''];
+      cuerpo += htmlDial({ valor: v, min: rg.min, max: rg.max, actual: est.actual, modo: e.state, encendido: !!est.encendido, lineas, etiqueta: T.temperatura, arrastrando });
     }
     if (c.modos.length) cuerpo += bloque(T.modo, `<div class="seg">${c.modos.map((m) => opc('modo', m, esc(T.modos[m] || bonito(m)), { sel: e.state === m })).join('')}</div>`);
     if (c.vels.length) cuerpo += bloque(T.ventilador, `<div class="seg">${c.vels.map((m) => opc('vent', m, esc(T.vels[m] || bonito(m)), { sel: a.fan_mode === m })).join('')}</div>`);
@@ -2626,7 +2739,7 @@ function htmlAire(d, estados, idioma, lugar) {
   let cuerpo = '';
   if (c && c.temp && num(a.temperature) !== null) {
     const boton = (v, icono, etiqueta) => `<button class="clm-btn" data-control="temp" data-valor="${v}" data-entidad="${ent}" aria-label="${esc(etiqueta)}"${prendido ? '' : ' disabled'}>${svg(icono, 22)}</button>`;
-    cuerpo += `<div class="clm-temp">${boton('-', ICONOS.menos, T.bajarTemp)}<span class="clm-cifra"><span class="num">${esc(grados(a.temperature))}°</span>${ahora}</span>${boton('+', ICONOS.mas, T.subirTemp)}</div>`;
+    cuerpo += `<div class="clm-temp">${boton('-', ICONOS.menos, T.bajarTemp)}<span class="clm-cifra"><span class="num">${esc(gradosEnteros(a.temperature))}°</span>${ahora}</span>${boton('+', ICONOS.mas, T.subirTemp)}</div>`;
   }
   if (prendido && c && c.modos.length) {
     cuerpo += `<div class="clm-modos">${c.modos.map((m) => `<button class="clm-modo${e.state === m ? ' sel' : ''}" data-control="modo" data-valor="${esc(m)}" data-entidad="${ent}" aria-pressed="${e.state === m ? 'true' : 'false'}">${esc(T.modos[m] || bonito(m))}</button>`).join('')}</div>`;
@@ -3415,6 +3528,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._cfg = { etiqueta: ETIQUETA_PANEL, etiquetaInicio: ETIQUETA_INICIO, etiquetaFavorito: ETIQUETA_FAVORITO, marca: '', fondo: '' };
       this._ventana = null;
       this._arrastre = null;
+      this._dial = null; // PANEL-16: el dedo que mueve el dial del aire ({ id, entidad }) y la espera del teclado.
+      this._tDial = null;
       this._camara = null;
       this._lateral = null; // PANEL-07: panel lateral abierto { tipo: 'audio' | 'aire' | 'camaras', grupo: CASA o id del cuarto }
       this._sinFoto = new Map(); // PANEL-06: cámara → hasta cuándo se trata como «sin foto»
@@ -3478,6 +3593,13 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       r.addEventListener('pointermove', (ev) => this._mover(ev));
       r.addEventListener('pointerup', () => this._soltar());
       r.addEventListener('pointercancel', () => this._soltar());
+      // PANEL-16: el dial del aire (dedo o ratón) y sus flechas del teclado.
+      r.addEventListener('pointerdown', (ev) => this._dialInicio(ev));
+      r.addEventListener('pointermove', (ev) => this._dialMover(ev));
+      r.addEventListener('pointerup', (ev) => this._dialFin(ev, true));
+      r.addEventListener('pointercancel', (ev) => this._dialFin(ev, false));
+      r.addEventListener('lostpointercapture', (ev) => this._dialFin(ev, true));
+      r.addEventListener('keydown', (ev) => this._dialTecla(ev));
       r.addEventListener('contextmenu', (ev) => {
         const b = ev.target.closest('[data-ficha], [data-bocina], [data-clima], [data-tarjeta]');
         if (!b) return;
@@ -4114,7 +4236,97 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     _cerrarVentana() {
       this._ventana = null;
       this._arrastre = null;
+      this._dial = null;
       this._render();
+    }
+
+    // PANEL-16: el aire de la ventana abierta y sus grados (rango entero y los de HA redondeados), o null.
+    _dialCtx() {
+      const d = this._ventana && this._hass ? this._dispositivo(this._ventana) : null;
+      const e = d && d.tipo === 'clima' ? this._hass.states[d.entidad] : null;
+      const rg = e ? rangoGrados(e.attributes) : null;
+      const t = e ? num(e.attributes?.temperature) : null;
+      if (!rg || t === null) return null;
+      return { entidad: d.entidad, rg, real: Math.max(rg.min, Math.min(rg.max, Math.round(t))) };
+    }
+
+    _dialGrados(ev, ctx, previo) {
+      const svgDial = this.shadowRoot.querySelector('[data-dial]');
+      const b = svgDial && svgDial.getBoundingClientRect();
+      if (!b || !b.width || !b.height) return previo;
+      return gradosDeDial(((ev.clientX - b.left) / b.width) * DIAL.lado, ((ev.clientY - b.top) / b.height) * DIAL.lado, ctx.rg.min, ctx.rg.max, previo);
+    }
+
+    _dialInicio(ev) {
+      const svgDial = ev.target && ev.target.closest ? ev.target.closest('[data-dial]') : null;
+      if (!svgDial || ev.button > 0 || this._dial) return;
+      const ctx = this._dialCtx();
+      if (!ctx) return;
+      const v = this._dialGrados(ev, ctx, null);
+      if (v === null) return;
+      ev.preventDefault();
+      try {
+        svgDial.setPointerCapture(ev.pointerId);
+      } catch {
+        /* sin captura: igual sigue con los eventos de la tarjeta */
+      }
+      clearTimeout(this._tDial);
+      this._tDial = null;
+      this._dial = { id: ev.pointerId, entidad: ctx.entidad };
+      this._arrastre = { entidad: ctx.entidad, control: 'grados', valor: v, dedo: true, hasta: Date.now() + 60000 };
+      this._render();
+    }
+
+    _dialMover(ev) {
+      if (!this._dial || ev.pointerId !== this._dial.id) return;
+      const ctx = this._dialCtx();
+      if (!ctx || ctx.entidad !== this._dial.entidad) return;
+      const previo = this._arrastre && this._arrastre.control === 'grados' ? this._arrastre.valor : ctx.real;
+      const v = this._dialGrados(ev, ctx, previo);
+      if (v === null || v === previo) return;
+      this._arrastre = { entidad: ctx.entidad, control: 'grados', valor: v, dedo: true, hasta: Date.now() + 60000 };
+      this._render();
+    }
+
+    // Al soltar se manda UNA orden con los grados del dedo (si no cambió, ordenControl no manda nada).
+    _dialFin(ev, mandar) {
+      if (!this._dial || ev.pointerId !== this._dial.id) return;
+      const { entidad } = this._dial;
+      this._dial = null;
+      const arr = this._arrastre && this._arrastre.control === 'grados' && this._arrastre.entidad === entidad ? this._arrastre : null;
+      if (!mandar || !arr) {
+        this._arrastre = null;
+        this._render();
+        return;
+      }
+      this._dialMandar(entidad, arr.valor);
+    }
+
+    _dialMandar(entidad, valor) {
+      this._arrastre = { entidad, control: 'grados', valor, hasta: Date.now() + 2500 };
+      this._control('grados', String(valor), entidad);
+      this._render();
+      setTimeout(() => this._render(), 2600);
+    }
+
+    // Flechas sobre el dial: un grado por tecla; la orden sale 700 ms después de la última.
+    _dialTecla(ev) {
+      const svgDial = ev.target && ev.target.closest ? ev.target.closest('[data-dial]') : null;
+      const dir = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[ev.key];
+      if (!svgDial || !dir || this._dial) return;
+      const ctx = this._dialCtx();
+      if (!ctx) return;
+      ev.preventDefault();
+      // Se suma a lo último que se movió (aunque HA aún no lo confirme); si no hay, se parte de lo que dice HA.
+      const arr = this._arrastre && Date.now() <= this._arrastre.hasta && this._arrastre.control === 'grados' && this._arrastre.entidad === ctx.entidad ? this._arrastre : null;
+      const v = Math.max(ctx.rg.min, Math.min(ctx.rg.max, (arr ? arr.valor : ctx.real) + dir));
+      this._arrastre = { entidad: ctx.entidad, control: 'grados', valor: v, hasta: Date.now() + 60000 };
+      this._render();
+      clearTimeout(this._tDial);
+      this._tDial = setTimeout(() => {
+        this._tDial = null;
+        this._dialMandar(ctx.entidad, v);
+      }, 700);
     }
 
     _presionar(ev) {
@@ -4774,6 +4986,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, ESPERA_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, ESPERA_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, gradosEnteros, rangoGrados, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, DIAL, anguloDial, puntoDial, arcoDial, gradosDeDial, marcasDial, htmlDial, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;

@@ -1,6 +1,6 @@
-// Vizions Panel 0.14.0 — tarjeta de Home Assistant (Vizions Smart Living).
+// Vizions Panel 0.15.0 — tarjeta de Home Assistant (Vizions Smart Living).
 // Archivo ARMADO por scripts/panel-construir.mjs: no se edita a mano.
-// Huella del contenido: 20e7797deccd7adbc99baa5330feed96
+// Huella del contenido: 07891f7a012eb0f77f8a21d584d4462c
 // ---- src/tipos.mjs
 const __vp_tipos = (() => {
 // Lista blanca de Smart Living: qué puede hacer cada tipo de dispositivo.
@@ -971,13 +971,25 @@ const __vp_tarjeta = (() => {
 // La temperatura elegida nunca se muestra con decimales (la actual, «ahora 32.9°», sí). Antes, sin
 // target_temp_step, el panel subía de 0.5 en 0.5.
 //
+// VIZIONS-PANEL-17 (0.15.0, aprobado el 24 nov 2026): canciones y «Audio de la TV». En «Tu música», tocar una
+// playlist o un álbum ya no la pone: abre su detalle (portada, nombre, «N canciones», Reproducir, Aleatorio y la
+// lista, de 50 en 50 con «Ver más»). Las canciones salen de media_player/browse_media de la bocina principal
+// (título «Artista - Canción», partido en el primer « - »). Tocar una canción pone la lista DESDE ella hasta el
+// final (music_assistant.play_media con la lista de uris, enqueue replace, hasta MAX_COLA); en orden, si el
+// aleatorio de Music Assistant estaba prendido se apaga antes. «Aleatorio» lo prende y pone la lista revuelta.
+// La que suena se marca con las barritas. Radio y Favoritos no cambian. «Audio de la TV»: en una bocina con
+// entrada de TV (source_list con «TV») que está en otra cosa, un botón manda select_source TV (corta la música y
+// regresa el audio de la TV), en el mini modal de «Ahora suena», en «Bocinas» y en el panel lateral de audio.
+// Con la bocina en la TV, el mini modal y la tarjeta de lo que suena no muestran anterior/play/siguiente (la
+// señal de Casa no cambia). Se probó en la oficina el 24 nov (Arc Ultra, Spotify) con usuario sin admin.
+//
 // Se arma en un solo archivo con scripts/panel-construir.mjs.
 
 const { dispositivosEtiquetados } = __vp_descubrir;
 const { TIPOS, noDisponibleDe } = __vp_tipos;
 const { traducirNombre } = __vp_traducir;
 
-const VERSION_PANEL = '0.14.0';
+const VERSION_PANEL = '0.15.0';
 const ETIQUETA_PANEL = 'Vizions Panel';
 const ETIQUETA_INICIO = 'Vizions Panel Inicio';
 const ETIQUETA_FAVORITO = 'Vizions Panel Favorito';
@@ -1203,6 +1215,8 @@ const TXT = {
     reintentando: 'Spotify estaba ocupado. Reintentando…', spotifyAtorado: 'Spotify sigue ocupado. Reinicia Music Assistant (Ajustes → Complementos) e intenta de nuevo.',
     silenciada: 'Silenciada', silenciarGrupo: 'Silenciar el grupo', quitarSilencioGrupo: 'Quitar el silencio del grupo', silenciarB: (b) => `Silenciar ${b}`, quitarSilencioB: (b) => `Quitar el silencio de ${b}`,
     tvTitulo: 'Bocina en la TV', tvTexto: (b) => `${b} está en la TV. Si la unes, se corta el audio de la TV.`, tvSi: 'Unir de todos modos', cancelar: 'Cancelar',
+    verCanciones: (n) => `Ver las canciones de ${n}`, volverA: (s) => `Volver a ${s}`, nCanciones: (n) => (n === 1 ? '1 canción' : `${n} canciones`), reproducirTodo: 'Reproducir', reproducirDesde: (c) => `Reproducir desde ${c}`,
+    sinCanciones: 'No hay canciones en esta lista', errorCanciones: 'No se pudieron leer las canciones. Toca para reintentar.', audioTV: 'Audio de la TV', audioTVDe: (b) => `Poner el audio de la TV en ${b}`,
     accesoAdmin: 'Acceso de administración', escribeClave: 'Escribe la clave', claveMal: 'Clave incorrecta', esperaClave: (n) => `Demasiados intentos. Espera ${n} s`,
     entrar: 'Entrar', borrar: 'Borrar', bloquear: 'Bloquear', bloquearEn: (t) => `Bloquear · ${t}`,
     bateria: (n, c) => `Batería ${n} %${c ? ', cargando' : ''}`,
@@ -1258,6 +1272,8 @@ const TXT = {
     reintentando: 'Spotify was busy. Retrying…', spotifyAtorado: 'Spotify is still busy. Restart Music Assistant (Settings → Add-ons) and try again.',
     silenciada: 'Muted', silenciarGrupo: 'Mute the group', quitarSilencioGrupo: 'Unmute the group', silenciarB: (b) => `Mute ${b}`, quitarSilencioB: (b) => `Unmute ${b}`,
     tvTitulo: 'Speaker on TV', tvTexto: (b) => `${b} is playing the TV. Joining it will cut the TV sound.`, tvSi: 'Join anyway', cancelar: 'Cancel',
+    verCanciones: (n) => `See the songs in ${n}`, volverA: (s) => `Back to ${s}`, nCanciones: (n) => (n === 1 ? '1 song' : `${n} songs`), reproducirTodo: 'Play', reproducirDesde: (c) => `Play from ${c}`,
+    sinCanciones: 'No songs in this list', errorCanciones: 'Could not read the songs. Tap to retry.', audioTV: 'TV audio', audioTVDe: (b) => `Switch ${b} to TV audio`,
     accesoAdmin: 'Admin access', escribeClave: 'Enter the code', claveMal: 'Wrong code', esperaClave: (n) => `Too many tries. Wait ${n} s`,
     entrar: 'Enter', borrar: 'Delete', bloquear: 'Lock', bloquearEn: (t) => `Lock · ${t}`,
     bateria: (n, c) => `Battery ${n}%${c ? ', charging' : ''}`,
@@ -1307,6 +1323,7 @@ const ICONOS = {
   engrane: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
   candado: 'M7 11V7a5 5 0 0 1 9.9-1 M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z',
   borrar: 'M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z M18 9l-6 6 M12 9l6 6',
+  izquierda: 'M15 6l-6 6 6 6', tv: 'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M8 21h8 M12 17v4',
 };
 const iconoDe = (d) => (d.tipo === 'luz' ? ICONOS[d.entidad.startsWith('switch.') ? 'switch' : 'light'] : ICONOS[d.tipo] || ICONOS.escena);
 
@@ -2246,6 +2263,33 @@ button.mus-vacio{cursor:pointer;width:100%}
 .mus-mute svg{stroke:currentColor}
 .mus-mute.on{background:#FFFFFF;color:#111315}
 .mus-mute[disabled]{opacity:0.35;cursor:default}
+.mus-volver{align-self:flex-start;display:flex;align-items:center;gap:6px;height:40px;padding:0 16px 0 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.08);color:#FFFFFF;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.mus-volver svg,.mus-det-bts svg,.mus-tv svg,.pop-tv svg,.boc-tv svg{stroke:currentColor}
+.mus-det-cab{display:flex;align-items:flex-end;gap:18px;min-width:0}
+.mus-det-tapa{flex:none;width:120px;height:120px;border-radius:18px;overflow:hidden;background:rgba(255,255,255,0.10)}
+.mus-det-tapa img,.mus-can-tapa img{width:100%;height:100%;object-fit:cover;display:block}
+.mus-det-tapa .mus-ini{font-size:40px}
+.mus-det-tx{display:flex;flex-direction:column;gap:6px;min-width:0}
+.mus-det-nom{font-size:26px;font-weight:600;letter-spacing:-0.02em;overflow-wrap:anywhere}
+.mus-det-sub{font-size:15px;color:rgba(255,255,255,0.80)}
+.mus-det-n{font-size:14px;color:rgba(255,255,255,0.76)}
+.mus-det-bts{display:flex;gap:10px;flex-wrap:wrap}
+.mus-det-play,.mus-det-alea{height:44px;padding:0 20px;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit}
+.mus-det-play{border:0;background:#FFFFFF;color:#111315}
+.mus-det-alea{border:1px solid rgba(255,255,255,0.24);background:rgba(255,255,255,0.08);color:#FFFFFF}
+.mus-lista{display:flex;flex-direction:column;gap:2px}
+.mus-can{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 10px;border:0;border-radius:14px;background:transparent;color:#FFFFFF;text-align:left;cursor:pointer;font-family:inherit;min-width:0}
+.mus-can.on{background:rgba(255,255,255,0.14)}
+.mus-can-n{flex:none;width:28px;display:flex;justify-content:center;font-size:14px;color:rgba(255,255,255,0.74);font-variant-numeric:tabular-nums}
+.mus-can-tapa{flex:none;width:44px;height:44px;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.10)}
+.mus-can-tapa .mus-ini{font-size:16px}
+.mus-can-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mus-can-nom{font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mus-can-art{font-size:13px;color:rgba(255,255,255,0.76);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mus-det-play[disabled],.mus-det-alea[disabled],.mus-can[disabled]{opacity:0.35;cursor:default}
+.mus-tv,.boc-tv{height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:500;cursor:pointer;color:#FFFFFF;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.24);font-family:inherit}
+.pop-pie{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pop-tv{height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:14px;font-weight:500;color:#FFFFFF;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.28);font-family:inherit}
 .aviso.con-accion{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;z-index:7}
 .aviso button{flex:none;height:36px;padding:0 14px;border-radius:18px;border:0;background:#FFFFFF;color:#111315;font-size:14px;font-weight:600;cursor:pointer}
 .hoja.confirmar{max-width:440px;gap:16px}
@@ -2317,6 +2361,10 @@ button.mus-vacio{cursor:pointer;width:100%}
 :host([movil]) .mus-play{width:56px;height:56px}
 :host([movil]) .mus-rejilla{grid-template-columns:minmax(0,1fr);gap:8px}
 :host([movil]) .mus-item{flex-direction:row;align-items:center;padding:8px;gap:12px}
+:host([movil]) .mus-det-tapa{width:88px;height:88px;border-radius:14px}
+:host([movil]) .mus-det-nom{font-size:20px}
+:host([movil]) .mus-det-bts > button{flex:1}
+:host([movil]) .mus-can{gap:12px;padding:5px 6px}
 :host([movil]) .mus-it-tapa{width:52px;height:52px;flex:none}
 :host([movil]) .mus-ini{font-size:20px}
 :host([movil]) .mus-vpb{display:block}
@@ -2588,7 +2636,9 @@ function htmlBocina(d, estados, idioma, vista) {
   const desl = `<div class="desl"><i style="width:${c?.volumen ? v : 0}%"></i><input type="range" min="0" max="100" step="1" value="${c?.volumen ? v : 0}" data-control="volumen" data-entidad="${ent}" aria-label="${esc(T.volumen)}"${c?.volumen ? '' : ' disabled'}></div>`;
   const numTxt = c?.volumen && (arr || real !== null) ? `${silencio && !arr ? 0 : v}` : '–';
   const vol = `<div class="boc-vol">${mute}${desl}<span class="boc-num">${esc(numTxt)}</span></div>`;
-  return `<div class="${clases.join(' ')}" data-bocina="${ent}"><div class="boc-cab"><span class="boc-ic">${icono(d.entidad, ICONOS.bocina, 22)}</span><span class="boc-tx"><span class="boc-nom">${esc(f.nombre)}</span><span class="boc-sub">${esc(sub)}</span></span></div>${ctl}${vol}</div>`;
+  // PANEL-17: «Audio de la TV» en una bocina con entrada de TV que está en otra cosa.
+  const tvB = f.disponible && puedeAudioTV(e) ? `<button class="boc-tv" data-audio-tv="${ent}" aria-label="${esc(T.audioTVDe(f.nombre))}">${svg(ICONOS.tv, 18)}<span>${esc(T.audioTV)}</span></button>` : '';
+  return `<div class="${clases.join(' ')}" data-bocina="${ent}"><div class="boc-cab"><span class="boc-ic">${icono(d.entidad, ICONOS.bocina, 22)}</span><span class="boc-tx"><span class="boc-nom">${esc(f.nombre)}</span><span class="boc-sub">${esc(sub)}</span></span></div>${ctl}${vol}${tvB}</div>`;
 }
 
 // PANEL-07: un panel lateral (audio, aires o cámaras). `cuerpo` va en la lista que se desliza; `pie` abajo.
@@ -3307,6 +3357,55 @@ const ordenSilencioBocina = (entidad, estados) => ({ dominio: 'media_player', se
 // La bocina está en la entrada de la TV (Arc/Beam/Ray).
 const enTV = (e) => e?.attributes?.source === 'TV';
 
+// PANEL-17: el detalle de una playlist o un álbum. Filas por página, tope de la cola y qué tipos abren detalle.
+const POR_PAGINA_DET = 50;
+const MAX_COLA = 250;
+const TIPOS_DETALLE = ['playlist', 'album'];
+// «Artista - Canción» → { cancion, artista }, partido en el PRIMER « - » (la canción puede traer más).
+function partirTitulo(t) {
+  const s = typeof t === 'string' ? t.trim() : '';
+  const k = s.indexOf(' - ');
+  if (k <= 0) return { cancion: s, artista: '' };
+  const cancion = s.slice(k + 3).trim();
+  return cancion ? { cancion, artista: s.slice(0, k).trim() } : { cancion: s, artista: '' };
+}
+// Respuesta de media_player/browse_media → [{ uri, cancion, artista, imagen }] (solo lo que se puede poner).
+function cancionesDe(resp) {
+  const hijos = Array.isArray(resp?.children) ? resp.children : [];
+  return hijos
+    .filter((c) => c && c.can_play !== false && c.can_expand !== true && typeof c.media_content_id === 'string' && c.media_content_id)
+    .map((c) => ({ uri: c.media_content_id, ...partirTitulo(c.title), imagen: typeof c.thumbnail === 'string' ? c.thumbnail : null }))
+    .filter((c) => c.cancion);
+}
+// Poner la lista desde la canción i hasta el final (como mucho MAX_COLA). null si i no existe.
+function ordenDesde(principal, canciones, i) {
+  const lista = Array.isArray(canciones) ? canciones : [];
+  if (!principal || !Number.isInteger(i) || i < 0 || i >= lista.length) return null;
+  return { dominio: 'music_assistant', servicio: 'play_media', datos: { entity_id: principal, media_id: lista.slice(i, i + MAX_COLA).map((c) => c.uri), media_type: 'track', enqueue: 'replace' } };
+}
+function barajar(lista, azar = Math.random) {
+  const a = Array.isArray(lista) ? [...lista] : [];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(azar() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+const ordenAleatorio = (principal, on) => ({ dominio: 'media_player', servicio: 'shuffle_set', datos: { entity_id: principal, shuffle: on === true } });
+// Cuál de las canciones suena (o está en pausa) en la bocina: por su uri; -1 si ninguna.
+function cancionSonando(e, canciones) {
+  if (!vivoMus(e) || !['playing', 'paused'].includes(e.state)) return -1;
+  const id = e.attributes?.media_content_id;
+  return typeof id === 'string' && id ? (Array.isArray(canciones) ? canciones : []).findIndex((c) => c.uri === id) : -1;
+}
+// PANEL-17: la bocina tiene entrada de TV y está en otra cosa → se ofrece «Audio de la TV».
+function puedeAudioTV(e) {
+  if (!vivoMus(e)) return false;
+  const a = e.attributes || {};
+  return Array.isArray(a.source_list) && a.source_list.includes('TV') && a.source !== 'TV';
+}
+const ordenAudioTV = (entidad) => ({ dominio: 'media_player', servicio: 'select_source', datos: { entity_id: entidad, source: 'TV' } });
+
 // Avance de lo que suena { pos, dur } en segundos (se mueve en el navegador mientras suena).
 function progresoMusica(e, ahora = Date.now()) {
   const a = e?.attributes || {};
@@ -3355,12 +3454,17 @@ function htmlAhora(modelo, estados, idioma, vista, el) {
   const v = arr ? arr.valor : maestro;
   const mudo = a.is_volume_muted === true;
   const b = (accion, icono, etq) => `<button class="pop-btn" data-mus="${accion}" data-principal="${p}" aria-label="${esc(etq)}">${svg(icono, 18)}</button>`;
+  // PANEL-17: con la bocina en la TV no hay anterior/play/siguiente; «Audio de la TV» si alguna del grupo puede.
+  const tv = enTV(e);
+  const tvEnt = todasDelGrupo(g).find((x) => puedeAudioTV(estados[x])) || null;
+  const abrir = `<button class="pop-abrir" data-ir-musica="1">${esc(T.abrirMusica)}</button>`;
+  const pie = tvEnt ? `<div class="pop-pie"><button class="pop-tv" data-audio-tv="${esc(tvEnt)}" aria-label="${esc(T.audioTVDe(nombreBocinaMus(tvEnt, modelo.musica, estados, idioma)))}">${svg(ICONOS.tv, 18)}<span>${esc(T.audioTV)}</span></button>${abrir}</div>` : abrir;
   const pop =
     `<div class="pop vidrio" role="dialog" aria-label="${esc(T.controlesMusica)}">` +
-    `<div class="pop-cab"><span class="pop-tapa" aria-hidden="true">${portada ? `<img src="${esc(portada)}" alt="" data-tapa="${esc(portada)}">` : svg(ICONOS.musica, 22)}</span><span class="pop-tx"><span class="pop-est">${esc(est)}</span><span class="pop-tit">${esc(textoCorto(a.media_title, 48) || T.sonando)}</span><span class="pop-gr">${esc(etiquetaGrupo(g, modelo.musica, estados, idioma))}</span></span><button class="pop-x" data-pop-cerrar="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 18)}</button></div>` +
-    `<div class="pop-ctl">${b('anterior', ICONOS.anterior, T.anterior)}<button class="pop-play" data-mus="play" data-principal="${p}" aria-label="${esc(T.reproducirPausar)}">${svg(e.state === 'playing' ? ICONOS.pausa : ICONOS.play, 22)}</button>${b('siguiente', ICONOS.siguiente, T.siguiente)}</div>` +
+    `<div class="pop-cab"><span class="pop-tapa" aria-hidden="true">${tv ? svg(ICONOS.tv, 22) : portada ? `<img src="${esc(portada)}" alt="" data-tapa="${esc(portada)}">` : svg(ICONOS.musica, 22)}</span><span class="pop-tx"><span class="pop-est">${esc(est)}</span><span class="pop-tit">${esc(textoCorto(a.media_title, 48) || T.sonando)}</span><span class="pop-gr">${esc(etiquetaGrupo(g, modelo.musica, estados, idioma))}</span></span><button class="pop-x" data-pop-cerrar="1" aria-label="${esc(T.cerrar)}">${svg(ICONOS.cerrar, 18)}</button></div>` +
+    (tv ? '' : `<div class="pop-ctl">${b('anterior', ICONOS.anterior, T.anterior)}<button class="pop-play" data-mus="play" data-principal="${p}" aria-label="${esc(T.reproducirPausar)}">${svg(e.state === 'playing' ? ICONOS.pausa : ICONOS.play, 22)}</button>${b('siguiente', ICONOS.siguiente, T.siguiente)}</div>`) +
     `<div class="pop-vol"><button class="pop-btn${mudo ? ' on' : ''}" data-mus="silencio" data-principal="${p}" aria-pressed="${mudo ? 'true' : 'false'}" aria-label="${esc(mudo ? T.quitarSilencio : T.silenciar)}">${svg(mudo ? ICONOS.silencio : ICONOS.sonido, 18)}</button><div class="desl"><i style="width:${v}%"></i><input type="range" min="0" max="100" step="1" value="${v}" data-mus-vol="grupo" data-principal="${p}" aria-label="${esc(T.volGrupo)}"></div><span class="pop-num">${esc(`${v} %`)}</span></div>` +
-    `<button class="pop-abrir" data-ir-musica="1">${esc(T.abrirMusica)}</button></div>`;
+    `${pie}</div>`;
   return `<div class="ahora der"><button class="cerrar-fondo" data-pop-cerrar="1" tabindex="-1" aria-label="${esc(T.cerrarMusica)}"></button>${senal}${pop}</div>`;
 }
 
@@ -3390,12 +3494,14 @@ function htmlMusica(modelo, estados, idioma, vista, ahoraMs) {
   const dis = vivo ? '' : ' disabled';
   const ctl = (accion, icono, etiqueta, on = null) => `<button class="mus-ctl vidrio${on ? ' on' : ''}" data-mus="${accion}" data-principal="${p}" aria-label="${esc(etiqueta)}"${on === null ? '' : ` aria-pressed="${on ? 'true' : 'false'}"`}${dis}>${svg(icono, 22)}</button>`;
   const rep = a.repeat === 'all' || a.repeat === 'one';
-  const controles = `<div class="mus-ctls">${ctl('aleatorio', ICONOS.aleatorio, T.aleatorio, a.shuffle === true)}${ctl('anterior', ICONOS.anterior, T.anterior)}<button class="mus-play" data-mus="play" data-principal="${p}" aria-label="${esc(T.reproducirPausar)}"${dis}>${svg(st === 'playing' ? ICONOS.pausa : ICONOS.play, 26)}</button>${ctl('siguiente', ICONOS.siguiente, T.siguiente)}${ctl('repetir', a.repeat === 'one' ? ICONOS.repetirUno : ICONOS.repetir, T.repetir, rep)}</div>`;
+  // PANEL-17: con la bocina en la TV no van los controles de música.
+  const tvG = vivo && enTV(e);
+  const controles = tvG ? '' : `<div class="mus-ctls">${ctl('aleatorio', ICONOS.aleatorio, T.aleatorio, a.shuffle === true)}${ctl('anterior', ICONOS.anterior, T.anterior)}<button class="mus-play" data-mus="play" data-principal="${p}" aria-label="${esc(T.reproducirPausar)}"${dis}>${svg(st === 'playing' ? ICONOS.pausa : ICONOS.play, 26)}</button>${ctl('siguiente', ICONOS.siguiente, T.siguiente)}${ctl('repetir', a.repeat === 'one' ? ICONOS.repetirUno : ICONOS.repetir, T.repetir, rep)}</div>`;
   const zonas =
     grupos.length > 1
       ? `<div class="mus-zonas" role="group" aria-label="${esc(T.zonasT)}">${grupos.map((x) => `<button class="mus-zona${x.principal === g.principal ? ' sel' : ''}" data-zona="${esc(x.principal)}" aria-pressed="${x.principal === g.principal ? 'true' : 'false'}">${esc(etiquetaGrupo(x, m, estados, idioma))}</button>`).join('')}</div>`
       : '';
-  const ahora = `<div class="mus-card vidrio mus-ahora"><div class="mus-tapa" aria-hidden="true">${portada ? `<img src="${esc(portada)}" alt="" data-tapa="${esc(portada)}">` : svg(ICONOS.musica, 44)}</div><div class="mus-info"><div><span class="etiqueta">${esc(cab)}</span><div class="mus-tit">${esc(conMusica ? textoCorto(a.media_title, 60) : T.eligeMusica)}</div>${subt ? `<div class="mus-sub">${esc(subt)}</div>` : ''}</div>${barra}</div>${controles}</div>`;
+  const ahora = `<div class="mus-card vidrio mus-ahora"><div class="mus-tapa" aria-hidden="true">${portada ? `<img src="${esc(portada)}" alt="" data-tapa="${esc(portada)}">` : svg(tvG ? ICONOS.tv : ICONOS.musica, 44)}</div><div class="mus-info"><div><span class="etiqueta">${esc(cab)}</span><div class="mus-tit">${esc(conMusica ? textoCorto(a.media_title, 60) : T.eligeMusica)}</div>${subt ? `<div class="mus-sub">${esc(subt)}</div>` : ''}</div>${barra}</div>${controles}</div>`;
   // «Tu música»
   const b = vista.bib || {};
   const seccion = SECCIONES_BIB.includes(b.seccion) ? b.seccion : 'playlist';
@@ -3408,7 +3514,7 @@ function htmlMusica(modelo, estados, idioma, vista, ahoraMs) {
       const img = img0 && !malas.has(img0) ? img0 : null;
       const tapa = img ? `<img src="${esc(img)}" alt="" loading="lazy" data-tapa="${esc(img)}">` : `<span class="mus-ini" style="background:${COLORES_TAPA[i % COLORES_TAPA.length]}">${esc((Array.from(it.nombre)[0] || '').toLocaleUpperCase())}</span>`;
       const meta = it.sub || T.tipoItem[it.tipo] || '';
-      return `<button class="mus-item" data-bib-item="${i}" aria-label="${esc(T.reproducirItem(it.nombre))}"${vivo && !vista.poniendo ? '' : ' disabled'}><span class="mus-it-tapa">${tapa}</span><span class="mus-it-tx"><span class="mus-it-nom">${esc(it.nombre)}</span><span class="mus-it-meta">${esc(meta)}</span></span></button>`;
+      return `<button class="mus-item" data-bib-item="${i}" aria-label="${esc(TIPOS_DETALLE.includes(it.tipo) ? T.verCanciones(it.nombre) : T.reproducirItem(it.nombre))}"${vivo && !vista.poniendo ? '' : ' disabled'}><span class="mus-it-tapa">${tapa}</span><span class="mus-it-tx"><span class="mus-it-nom">${esc(it.nombre)}</span><span class="mus-it-meta">${esc(meta)}</span></span></button>`;
     })
     .join('');
   let estado = '';
@@ -3416,7 +3522,8 @@ function htmlMusica(modelo, estados, idioma, vista, ahoraMs) {
   else if (!items.length && b.cargando) estado = `<div class="mus-vacio">${esc(T.cargando)}</div>`;
   else if (!items.length && b.cargada) estado = `<div class="mus-vacio">${esc(T.sinItems)}</div>`;
   const mas = items.length && !b.fin && !b.error ? `<button class="mus-mas" data-bib-mas="1"${b.cargando ? ' disabled' : ''}>${esc(b.cargando ? T.cargando : T.verMas)}</button>` : '';
-  const bib = `<div class="mus-card vidrio mus-bib"><div class="mus-cab"><span class="etiqueta">${esc(T.tuMusica)}</span><div class="mus-pills" role="group" aria-label="${esc(T.tuMusica)}">${pills}</div></div>${buscar}${tarjetas ? `<div class="mus-rejilla">${tarjetas}</div>` : ''}${estado}${mas}</div>`;
+  // PANEL-17: con una playlist o un álbum abierto, su detalle va en el lugar de la cuadrícula.
+  const bib = vista.detalle && vista.detalle.item ? htmlDetalle(vista.detalle, seccion, g, estados, idioma, vista, vivo) : `<div class="mus-card vidrio mus-bib"><div class="mus-cab"><span class="etiqueta">${esc(T.tuMusica)}</span><div class="mus-pills" role="group" aria-label="${esc(T.tuMusica)}">${pills}</div></div>${buscar}${tarjetas ? `<div class="mus-rejilla">${tarjetas}</div>` : ''}${estado}${mas}</div>`;
   // «Bocinas»
   const todos = todasDelGrupo(g);
   const arr = vista.arrMus || null;
@@ -3441,11 +3548,55 @@ function htmlMusica(modelo, estados, idioma, vista, ahoraMs) {
         : `<button class="mus-unir" data-unir="${esc(ent)}" data-principal="${p}" aria-pressed="false" aria-label="${esc(T.unirA(nombre))}"${!vivoB || !vivo ? ' disabled' : ''}>${esc(T.unir)}</button>`;
       const mute = `<button class="mus-mute${mudoB ? ' on' : ''}" data-mus-mute="${esc(ent)}" aria-pressed="${mudoB ? 'true' : 'false'}" aria-label="${esc(mudoB ? T.quitarSilencioB(nombre) : T.silenciarB(nombre))}"${vivoB ? '' : ' disabled'}>${svg(mudoB ? ICONOS.silencio : ICONOS.sonido, 18)}</button>`;
       const desl = `<div class="mus-bvol">${mute}<div class="desl mus-desl chico"><i style="width:${vivoB && v !== null ? vb : 0}%"></i><input type="range" min="0" max="100" step="1" value="${vb}" data-mus-vol="bocina" data-entidad="${esc(ent)}" aria-label="${esc(T.volDe(nombre))}"${vivoB && v !== null ? '' : ' disabled'}></div></div>`;
-      return `<div class="mus-boc${dentro ? ' dentro' : ''}${vivoB ? '' : ' nodisp'}"><div class="mus-boc-cab"><div class="mus-boc-tx"><div class="mus-boc-nom">${esc(nombre)}</div><div class="mus-boc-est">${esc(est)}</div></div>${boton}</div>${desl}</div>`;
+      const tvB = puedeAudioTV(eb) ? `<button class="mus-tv" data-audio-tv="${esc(ent)}" aria-label="${esc(T.audioTVDe(nombre))}">${svg(ICONOS.tv, 18)}<span>${esc(T.audioTV)}</span></button>` : '';
+      return `<div class="mus-boc${dentro ? ' dentro' : ''}${vivoB ? '' : ' nodisp'}"><div class="mus-boc-cab"><div class="mus-boc-tx"><div class="mus-boc-nom">${esc(nombre)}</div><div class="mus-boc-est">${esc(est)}</div></div>${boton}</div>${desl}${tvB}</div>`;
     })
     .join('');
   const bocinas = `<div class="mus-card vidrio mus-bocinas${vista.volPorBocina ? ' abierto' : ''}"><div class="mus-cab"><span class="etiqueta">${esc(T.bocinasT)}</span><button class="mus-pill mus-vpb" data-vol-por-bocina="1" aria-pressed="${vista.volPorBocina ? 'true' : 'false'}">${esc(T.volPorBocina)}</button></div>${master}<div class="mus-sep"></div>${filas}</div>`;
   return `<div><div class="sobre">${esc(T.bocinasN(m.bocinas.length).toLocaleUpperCase(idioma === 'en' ? 'en' : 'es'))}</div><div class="titulo mus">${esc(T.musica)}</div></div>${zonas}<div class="mus-cols"><div class="mus-izq">${ahora}${bib}</div>${bocinas}</div>`;
+}
+
+// PANEL-17: el detalle de una playlist o un álbum (sus canciones) en lugar de la cuadrícula de «Tu música».
+function htmlDetalle(det, seccion, g, estados, idioma, vista, vivo) {
+  const T = TXT[idioma];
+  const it = det.item || {};
+  const malas = vista.tapasMalas || new Set();
+  const https = vista.https === true;
+  const ini = (s) => esc((Array.from(String(s || ''))[0] || '').toLocaleUpperCase());
+  const img0 = imagenBiblioteca(it.imagen, https);
+  const img = img0 && !malas.has(img0) ? img0 : null;
+  const tapa = img ? `<img src="${esc(img)}" alt="" data-tapa="${esc(img)}">` : `<span class="mus-ini" style="background:${COLORES_TAPA[(Number(det.idx) || 0) % COLORES_TAPA.length]}">${ini(it.nombre)}</span>`;
+  const canciones = Array.isArray(det.canciones) ? det.canciones : [];
+  const n = canciones.length;
+  const lista = !det.cargando && !det.error;
+  const puede = vivo && !vista.poniendo;
+  const eb = estados[g.principal];
+  const actual = cancionSonando(eb, canciones);
+  const tipoEt = (T.tipoItem[it.tipo] || '').toLocaleUpperCase(idioma === 'en' ? 'en' : 'es');
+  const volver = `<button class="mus-volver" data-det-volver="1" aria-label="${esc(T.volverA(T.secciones[seccion]))}">${svg(ICONOS.izquierda, 18)}<span>${esc(T.secciones[seccion])}</span></button>`;
+  const cab = `<div class="mus-det-cab"><span class="mus-det-tapa" aria-hidden="true">${tapa}</span><span class="mus-det-tx"><span class="etiqueta">${esc(tipoEt)}</span><span class="mus-det-nom">${esc(it.nombre || '')}</span>${it.sub ? `<span class="mus-det-sub">${esc(it.sub)}</span>` : ''}${lista ? `<span class="mus-det-n">${esc(T.nCanciones(n))}</span>` : ''}</span></div>`;
+  const dis = puede ? '' : ' disabled';
+  const bts = lista && n ? `<div class="mus-det-bts"><button class="mus-det-play" data-det-todo="1"${dis}>${svg(ICONOS.play, 16)}<span>${esc(T.reproducirTodo)}</span></button><button class="mus-det-alea" data-det-alea="1"${dis}>${svg(ICONOS.aleatorio, 18)}<span>${esc(T.aleatorio)}</span></button></div>` : '';
+  const mostrar = Math.max(POR_PAGINA_DET, Number(det.mostrar) || POR_PAGINA_DET);
+  const filas = lista
+    ? canciones
+        .slice(0, mostrar)
+        .map((c, i) => {
+          const on = i === actual;
+          const marca = on ? `<span class="ecual ${eb.state === 'playing' ? 'sonando' : 'pausa'}" aria-hidden="true"><i></i><i></i><i></i></span>` : String(i + 1);
+          const im0 = imagenBiblioteca(c.imagen, https);
+          const im = im0 && !malas.has(im0) ? im0 : null;
+          const t = im ? `<img src="${esc(im)}" alt="" loading="lazy" data-tapa="${esc(im)}">` : `<span class="mus-ini" style="background:${COLORES_TAPA[i % COLORES_TAPA.length]}">${ini(c.cancion)}</span>`;
+          return `<button class="mus-can${on ? ' on' : ''}" data-det-can="${i}" aria-label="${esc(T.reproducirDesde(c.cancion))}"${on ? ' aria-current="true"' : ''}${dis}><span class="mus-can-n">${marca}</span><span class="mus-can-tapa" aria-hidden="true">${t}</span><span class="mus-can-tx"><span class="mus-can-nom">${esc(c.cancion)}</span>${c.artista ? `<span class="mus-can-art">${esc(c.artista)}</span>` : ''}</span></button>`;
+        })
+        .join('')
+    : '';
+  let estado = '';
+  if (det.error) estado = `<button class="mus-vacio" data-det-reintentar="1">${esc(T.errorCanciones)}</button>`;
+  else if (det.cargando) estado = `<div class="mus-vacio">${esc(T.cargando)}</div>`;
+  else if (!n) estado = `<div class="mus-vacio">${esc(T.sinCanciones)}</div>`;
+  const mas = lista && n > mostrar ? `<button class="mus-mas" data-det-mas="1">${esc(T.verMas)}</button>` : '';
+  return `<div class="mus-card vidrio mus-bib mus-det">${volver}${cab}${bts}${filas ? `<div class="mus-lista">${filas}</div>` : ''}${estado}${mas}</div>`;
 }
 
 // La pregunta antes de unir una bocina que está en la TV.
@@ -3550,6 +3701,10 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       this._avisoAccion = null;
       this._volPorBocina = false;
       this._tapasMalas = new Set();
+      // PANEL-17: el detalle abierto de una playlist o un álbum ({ item, idx, canciones, cargando, error, mostrar,
+      // pedido }) y dónde estaba el desplazamiento de la pestaña al abrirlo.
+      this._detalle = null;
+      this._scrollBib = 0;
       // PANEL-15: el MJPEG de la vista grande que se está vigilando ({ src }) y cuánto se le espera.
       this._vigilada = null;
       this._esperaFoto = ESPERA_FOTO_MS;
@@ -3919,6 +4074,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       if (this._arrMus && Date.now() > this._arrMus.hasta) this._arrMus = null;
       const mus = this._musicaActual();
       if (!mus) this._confirmarTV = null;
+      if (!mus) this._detalle = null;
       if (this._popMusica && (!mus || !mus.sonando || !senalMusica(mus.sonando.grupo, this._hass.states, idioma))) this._popMusica = false;
       if (mus && this._pestana === MUSICA && !this._bib.cargada) Promise.resolve().then(() => this._cargarBib(true));
       if (this._camara && !(this._modeloActual.camaras || []).some((c) => c.entidad === this._camara)) this._camara = null;
@@ -3954,6 +4110,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
               popMusica: this._popMusica,
               grupoMusica: this._grupoMusica,
               bib: this._bib,
+              detalle: this._detalle,
               arrMus: this._arrMus,
               confirmarTV: this._confirmarTV,
               avisoAccion: this._avisoAccion && this._avisoAccion.texto === this._aviso ? this._avisoAccion.accion : null,
@@ -4451,6 +4608,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._lateral = null;
         this._popMusica = false;
         this._confirmarTV = null;
+        this._detalle = null;
         this._pestana = tab.dataset.tab;
         try {
           localStorage.setItem('vizions-panel-pestana', this._pestana);
@@ -4480,6 +4638,12 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     // PANEL-13: los clics de música. Devuelve true si el clic era suyo.
     _clicMusica(ev) {
       const t = ev.target;
+      // PANEL-17: «Audio de la TV» (mini modal, Bocinas o panel lateral de audio).
+      const tvb = t.closest('[data-audio-tv]');
+      if (tvb) {
+        if (!tvb.disabled && this._hass) this._servicio(ordenAudioTV(tvb.dataset.audioTv));
+        return true;
+      }
       if (t.closest('[data-tv-no]')) {
         this._confirmarTV = null;
         this._render();
@@ -4519,7 +4683,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._irAPestana(MUSICA);
         return true;
       }
-      const b = t.closest('[data-mus], [data-mus-mute], [data-zona], [data-bib-sec], [data-bib-item], [data-bib-mas], [data-bib-reintentar], [data-unir], [data-separar], [data-vol-por-bocina]');
+      const b = t.closest('[data-mus], [data-mus-mute], [data-zona], [data-bib-sec], [data-bib-item], [data-bib-mas], [data-bib-reintentar], [data-unir], [data-separar], [data-vol-por-bocina], [data-det-volver], [data-det-can], [data-det-todo], [data-det-alea], [data-det-mas], [data-det-reintentar]');
       if (!b) return false;
       if (b.disabled) return true;
       const d = b.dataset;
@@ -4531,10 +4695,21 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
         this._render();
       } else if (d.bibSec) {
         if (SECCIONES_BIB.includes(d.bibSec) && d.bibSec !== this._bib.seccion) {
+          this._detalle = null;
           this._bib = { ...this._bib, seccion: d.bibSec };
           this._cargarBib(true);
         }
-      } else if (d.bibItem !== undefined) this._reproducirItem(Number(d.bibItem));
+      } else if (d.detVolver) this._cerrarDetalle();
+      else if (d.detCan !== undefined) this._reproducirLista(false, Number(d.detCan));
+      else if (d.detTodo) this._reproducirLista(false, 0);
+      else if (d.detAlea) this._reproducirLista(true, 0);
+      else if (d.detMas) {
+        if (this._detalle) {
+          this._detalle = { ...this._detalle, mostrar: (this._detalle.mostrar || POR_PAGINA_DET) + POR_PAGINA_DET };
+          this._render();
+        }
+      } else if (d.detReintentar) this._cargarDetalle();
+      else if (d.bibItem !== undefined) this._reproducirItem(Number(d.bibItem));
       else if (d.bibMas) this._cargarBib(false);
       else if (d.bibReintentar) this._cargarBib(true);
       else if (d.unir) this._unir(d.unir, d.principal, false);
@@ -4633,8 +4808,69 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       const item = this._bib.items[i];
       const mus = this._musicaActual();
       if (!item || !mus || !mus.sel || !mus.sel.disponible || this._poniendo) return;
+      // PANEL-17: una playlist o un álbum abre su detalle (las canciones); lo demás se pone como antes.
+      if (TIPOS_DETALLE.includes(item.tipo)) {
+        this._abrirDetalle(i);
+        return;
+      }
       this._grupoMusica = mus.sel.principal;
       this._ponerMusica(mus.sel.principal, item, false);
+    }
+
+    // PANEL-17: abre el detalle de una playlist o un álbum de «Tu música» y pide sus canciones.
+    _abrirDetalle(i) {
+      const item = this._bib.items[i];
+      if (!item || !TIPOS_DETALLE.includes(item.tipo)) return;
+      const capa = this.shadowRoot && this.shadowRoot.querySelector('.capa');
+      this._scrollBib = capa ? capa.scrollTop : 0;
+      this._detalle = { item, idx: i, canciones: [], cargando: false, error: false, mostrar: POR_PAGINA_DET, pedido: 0 };
+      this._cargarDetalle();
+      const el = this.shadowRoot && this.shadowRoot.querySelector('.mus-det');
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' });
+    }
+
+    // PANEL-17: las canciones salen de media_player/browse_media de la bocina principal. Las respuestas viejas se ignoran.
+    async _cargarDetalle() {
+      const h = this._hass;
+      const mus = this._musicaActual();
+      const det = this._detalle;
+      if (!h || !mus || !mus.sel || !det) return;
+      const pedido = (det.pedido || 0) + 1;
+      this._detalle = { ...det, pedido, cargando: true, error: false };
+      this._render();
+      try {
+        const r = await h.callWS({ type: 'media_player/browse_media', entity_id: mus.sel.principal, media_content_type: det.item.tipo, media_content_id: det.item.uri });
+        if (!this._detalle || this._detalle.pedido !== pedido) return;
+        this._detalle = { ...this._detalle, cargando: false, canciones: cancionesDe(r) };
+      } catch (e) {
+        if (!this._detalle || this._detalle.pedido !== pedido) return;
+        console.warn('[vizions-panel] canciones', e);
+        this._detalle = { ...this._detalle, cargando: false, error: true };
+      }
+      this._render();
+    }
+
+    // PANEL-17: regresa a la cuadrícula, en el lugar del desplazamiento donde estaba.
+    _cerrarDetalle() {
+      this._detalle = null;
+      this._render();
+      const capa = this.shadowRoot && this.shadowRoot.querySelector('.capa');
+      if (capa) capa.scrollTop = this._scrollBib || 0;
+    }
+
+    // PANEL-17: pone la lista desde la canción i (o toda, revuelta, con «Aleatorio»). En orden, si el aleatorio de
+    // Music Assistant estaba prendido se apaga antes (si no, revolvería la lista).
+    _reproducirLista(alea, i = 0) {
+      const det = this._detalle;
+      const mus = this._musicaActual();
+      const h = this._hass;
+      if (!det || !h || !mus || !mus.sel || !mus.sel.disponible || this._poniendo || det.cargando) return;
+      const p = mus.sel.principal;
+      const orden = ordenDesde(p, alea ? barajar(det.canciones) : det.canciones, alea ? 0 : i);
+      if (!orden) return;
+      const antes = alea ? [ordenAleatorio(p, true)] : h.states[p]?.attributes?.shuffle === true ? [ordenAleatorio(p, false)] : [];
+      this._grupoMusica = p;
+      this._ponerMusica(p, { orden, antes }, false);
     }
 
     // PANEL-13c: una orden de música sin el aviso de Home Assistant → 'ok', 'limite' o el error.
@@ -4659,7 +4895,8 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
       const h = this._hass;
       if (!h || this._poniendo) return;
       const T = TXT[idiomaDe(h)];
-      const o = ordenReproducir(principal, item);
+      // PANEL-17: el detalle manda su orden ya armada (la lista desde una canción) y lo que va antes (aleatorio).
+      const o = item && item.orden ? item.orden : ordenReproducir(principal, item);
       this._poniendo = true;
       this._render();
       try {
@@ -4671,6 +4908,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
             await this._esperar();
           }
         }
+        for (const x of (item && item.antes) || []) await this._intentar(x);
         let r = await this._intentar(o);
         if (r === 'ok') return;
         if (r === 'limite' && !aqui) {
@@ -4708,6 +4946,7 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
     _buscarBib(texto) {
       clearTimeout(this._tBuscar);
       this._tBuscar = setTimeout(() => {
+        this._detalle = null;
         this._bib = { ...this._bib, busqueda: String(texto || '') };
         this._cargarBib(true);
       }, 450);
@@ -4986,6 +5225,6 @@ if (typeof HTMLElement !== 'undefined' && typeof customElements !== 'undefined' 
   console.info(`%c VIZIONS PANEL %c ${VERSION_PANEL} `, 'background:#111;color:#FFE2B0', 'background:#FFE2B0;color:#111');
 }
 
-return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, ESPERA_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, gradosEnteros, rangoGrados, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, DIAL, anguloDial, puntoDial, arcoDial, gradosDeDial, marcasDial, htmlDial, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
+return { VERSION_PANEL, ETIQUETA_PANEL, ETIQUETA_INICIO, ETIQUETA_FAVORITO, MAX_VIVO, SIN_FOTO_MS, ESPERA_FOTO_MS, quiereKiosko, SAL_CLAVE, DESBLOQUEO_MS, INTENTOS_CLAVE, ESPERA_CLAVE_MS, CLAVE_MIN, CLAVE_MAX, sha256Hex, hashClave, claveAdminValida, estadoCandado, textoRestante, errorClave, RELOJ_CANDADO, CANDADO, candadoAbierto, vencerCandado, esCasa, KIOSKO_ID, CSS_KIOSKO, raicesKiosko, idiomaDe, esc, gradosEnteros, rangoGrados, urlSegura, capasFoto, camarasEtiquetadas, urlCamara, camaraConVideo, pasosVentilador, TIPOS_PANEL, ventiladoresEtiquetados, rutinasEtiquetadas, armarModelo, accionDeToque, fichaDe, ordenDe, TONOS, COLORES, capsDe, controlesDe, ordenControl, encabezadoCuarto, ANCHO_MOVIL, esMovil, CERRAR_DESLIZANDO, VOLVER_MS, cuartoDeParametro, normalizarBateria, DIAL, anguloDial, puntoDial, arcoDial, gradosDeDial, marcasDial, htmlDial, resumenAudio, resumenAires, resumenVentiladores, ordenPanelCamaras, dibujar, enPantallaCompleta, grupoLateral, grupoAudio, LIMITE_BIB, SECCIONES_BIB, volPct, gruposMusica, todasDelGrupo, volumenesDe, maestroVolumen, volumenesGrupo, ordenesVolumenGrupo, ordenVolumen, elegirSonando, grupoSeleccionado, senalMusica, portadaMusica, imagenBiblioteca, itemsBiblioteca, pedidoBiblioteca, ordenReproducir, ordenUnir, ordenSeparar, ordenMusica, esLimiteSpotify, ESPERA_SPOTIFY, gruposOtrosSonando, ordenDetener, ordenSilencioBocina, enTV, POR_PAGINA_DET, MAX_COLA, TIPOS_DETALLE, partirTitulo, cancionesDe, ordenDesde, barajar, ordenAleatorio, cancionSonando, puedeAudioTV, ordenAudioTV, progresoMusica, tiempoMusica, etiquetaGrupo, morph };
 })();
 export const VIZIONS_PANEL = __vp_tarjeta;
